@@ -1,0 +1,2 @@
+- [x] Add import for 'package:path/path.dart' as path;
+- [x] Replace audioUrl.split('/').last with path.basename(audioUrl) in the Text widget.
