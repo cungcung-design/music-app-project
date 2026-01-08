@@ -174,7 +174,7 @@ class DatabaseService {
             .getPublicUrl(profilePath);
       }
   return Artist(
-      id: e['id'] as String,     // ✅ STRING
+     id: e['id'].toString(),    // ✅ STRING
       name: e['name'] as String,
       bio: e['bio'] as String,
       profileUrl: profileUrl,
