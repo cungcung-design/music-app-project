@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/database_service.dart';
 import '../utils/toast.dart';
 import 'signup_page.dart';
-import '../user/user_profile_page.dart';
+import '../home_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -44,7 +44,7 @@ class _LoginPageState extends State<LoginPage> {
                 if (db.currentUser != null) {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (_) => const UserProfilePage()),
+                    MaterialPageRoute(builder: (_) => const UserHomePage()),
                   );
                 }
               } catch (e) {

@@ -22,27 +22,41 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
   @override
   void initState() {
     super.initState();
-    loadAll();
+    loadAlbums();
+    loadArtists();
   }
 
-  Future<void> loadAll() async {
+  Future<void> loadAlbums() async {
     setState(() => loading = true);
-    final albumsData = await db.getAlbums();
-    final artistsData = await db.getArtists();
+    final data = await db.getAlbums();
     if (mounted) {
       setState(() {
-        albums = albumsData;
-        artists = artistsData;
+        albums = data;
         loading = false;
+      });
+    }
+  }
+
+  Future<void> loadArtists() async {
+    final data = await db.getArtists();
+    if (mounted) {
+      setState(() {
+        artists = data;
       });
     }
   }
 
   void showAlbumForm({Album? album}) {
     final nameController = TextEditingController(text: album?.name ?? '');
-    String? selectedArtistId = album?.artistId;
+    Artist? selectedArtist = album != null
+        ? artists.firstWhere(
+            (a) => a.id == album.artistId,
+            orElse: () => artists.first,
+          )
+        : (artists.isNotEmpty ? artists.first : null);
+
     File? selectedCover;
-    String? coverFileName = album?.coverUrl;
+    String? coverFileName = album?.albumProfilePath;
 
     showDialog(
       context: context,
@@ -60,33 +74,31 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
                   controller: nameController,
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
-                    hintText: 'Album Name',
+                    hintText: "Album Name",
                     hintStyle: TextStyle(color: Colors.grey),
                   ),
                 ),
                 const SizedBox(height: 12),
-
-                DropdownButtonFormField<String>(
-                  value: selectedArtistId,
+                DropdownButton<Artist>(
+                  value: selectedArtist,
+                  dropdownColor: Colors.grey[900],
+                  isExpanded: true,
                   items: artists.map((artist) {
                     return DropdownMenuItem(
-                      value: artist.id,
-                      child: Text(artist.name, style: const TextStyle(color: Colors.white)),
+                      value: artist,
+                      child: Text(
+                        artist.name,
+                        style: const TextStyle(color: Colors.white),
+                      ),
                     );
                   }).toList(),
-                  onChanged: (value) => setState(() => selectedArtistId = value),
-                  decoration: const InputDecoration(
-                    labelText: 'Select Artist',
-                    labelStyle: TextStyle(color: Colors.grey),
-                  ),
-                  dropdownColor: Colors.grey[800],
-                  style: const TextStyle(color: Colors.white),
+                  onChanged: (val) => setState(() => selectedArtist = val),
                 ),
                 const SizedBox(height: 12),
-
                 ElevatedButton.icon(
                   onPressed: () async {
-                    FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
+                    FilePickerResult? result = await FilePicker.platform
+                        .pickFiles(type: FileType.image);
                     if (result != null && result.files.single.path != null) {
                       selectedCover = File(result.files.single.path!);
                       setState(() {
@@ -108,47 +120,51 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+              child: const Text("Cancel", style: TextStyle(color: Colors.red)),
             ),
             TextButton(
               onPressed: () async {
                 final name = nameController.text.trim();
-                if (name.isEmpty || selectedArtistId == null || (album == null && selectedCover == null)) {
+                if (name.isEmpty ||
+                    selectedArtist == null ||
+                    (album == null && selectedCover == null)) {
                   showToast(context, "All fields required", isError: true);
                   return;
                 }
 
                 try {
-                  String? coverPath = album?.coverUrl;
+                  String? albumProfilePath = album?.albumProfilePath;
 
                   if (selectedCover != null) {
-                    coverPath = await db.uploadAlbumCover(selectedCover!);
+                    albumProfilePath = await db.uploadAlbumCover(
+                      selectedCover!,
+                    );
                   }
 
                   if (album == null) {
                     await db.addAlbum(
                       name: name,
-                      artistId: selectedArtistId!,
-                      coverUrl: coverPath!,
+                      artistId: selectedArtist!.id,
+                      albumProfilePath: albumProfilePath!,
                     );
                     showToast(context, "Album added ✅");
                   } else {
                     await db.updateAlbum(
                       id: album.id,
                       name: name,
-                      artistId: selectedArtistId!,
-                      coverUrl: coverPath!,
+                      artistId: selectedArtist!.id,
+                      albumProfilePath: albumProfilePath!,
                     );
                     showToast(context, "Album updated ✅");
                   }
 
                   Navigator.pop(context);
-                  loadAll();
+                  loadAlbums();
                 } catch (e) {
                   showToast(context, "Operation failed: $e", isError: true);
                 }
               },
-              child: const Text('Save', style: TextStyle(color: Colors.green)),
+              child: const Text("Save", style: TextStyle(color: Colors.green)),
             ),
           ],
         ),
@@ -159,18 +175,22 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
   Future<void> deleteAlbum(String id) async {
     await db.deleteAlbum(id);
     showToast(context, "Album deleted ✅");
-    loadAll();
+    loadAlbums();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (loading) return const Center(child: CircularProgressIndicator(color: Colors.green));
+    if (loading)
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.green),
+      );
 
     return Scaffold(
+      backgroundColor: Colors.black,
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.green,
         onPressed: () => showAlbumForm(),
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add), // ✅ Add Album icon
       ),
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
@@ -178,20 +198,44 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
         separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (_, index) {
           final album = albums[index];
-          final artist = artists.firstWhere((a) => a.id == album.artistId, orElse: () => Artist(id: '', name: 'Unknown', bio: ''));
+          final artistName = artists
+              .firstWhere(
+                (a) => a.id == album.artistId,
+                orElse: () => Artist(id: '', name: 'Unknown', bio: ''),
+              )
+              .name;
 
           return ListTile(
             tileColor: Colors.grey[850],
-            leading: album.coverUrl != null
-                ? Image.network(
-                    album.coverUrl!,
-                    width: 50,
-                    height: 50,
-                    fit: BoxFit.cover,
-                  )
-                : const Icon(Icons.album, color: Colors.green),
-            title: Text(album.name, style: const TextStyle(color: Colors.white)),
-            subtitle: Text("Artist: ${artist.name}", style: const TextStyle(color: Colors.grey)),
+            leading: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.grey[700],
+              ),
+              child:
+                  album.albumProfileUrl != null &&
+                      album.albumProfileUrl!.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        album.albumProfileUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            const Icon(Icons.album, color: Colors.green),
+                      ),
+                    )
+                  : const Icon(Icons.album, color: Colors.green),
+            ),
+            title: Text(
+              album.name,
+              style: const TextStyle(color: Colors.white),
+            ),
+            subtitle: Text(
+              "Artist: $artistName",
+              style: const TextStyle(color: Colors.grey),
+            ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

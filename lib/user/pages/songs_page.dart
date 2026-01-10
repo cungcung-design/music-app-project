@@ -1,62 +1,87 @@
 import 'package:flutter/material.dart';
 import '../../services/database_service.dart';
 import '../../models/song.dart';
+import '../../services/audio_player_service.dart';
 
-class SongsPage extends StatefulWidget {
+class SongsPage extends StatelessWidget {
   final DatabaseService db;
-  const SongsPage({Key? key, required this.db}) : super(key: key);
+  const SongsPage({super.key, required this.db});
 
-  @override
-  State<SongsPage> createState() => _SongsPageState();
-}
-
-class _SongsPageState extends State<SongsPage> {
-  List<Song> songs = [];
-  bool loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    fetchSongs();
-  }
-
-  Future<void> fetchSongs() async {
-    setState(() => loading = true);
-    try {
-      songs = await widget.db.getSongs();
-      setState(() => loading = false);
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
-      setState(() => loading = false);
-    }
+  Future<List<Song>> fetchSongs() async {
+    return await db.getSongsWithDetails();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (loading) return const Center(child: CircularProgressIndicator());
+    return FutureBuilder<List<Song>>(
+      future: fetchSongs(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: Colors.green),
+          );
+        }
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Error: ${snapshot.error}',
+              style: const TextStyle(color: Colors.red),
+            ),
+          );
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(
+            child: Text(
+              'No songs available',
+              style: TextStyle(color: Colors.white),
+            ),
+          );
+        }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: songs.length,
-      itemBuilder: (_, index) {
-        final song = songs[index];
-        return ListTile(
-          leading: Container(
-            width: 50,
-            height: 50,
-            color: Colors.grey[800],
-            child: song.audioUrl != null && song.audioUrl!.isNotEmpty
-                ? Image.network(song.audioUrl!, fit: BoxFit.cover)
-                : const Icon(Icons.music_note, color: Colors.white),
-          ),
-          title: Text(song.name, style: const TextStyle(color: Colors.white)),
-          subtitle: Text(
-            'Artist ID: ${song.artistId}',
-            style: const TextStyle(color: Colors.grey),
-          ),
-          trailing: const Icon(Icons.play_arrow, color: Colors.green),
+        final songs = snapshot.data!;
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: songs.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (_, index) {
+            final song = songs[index];
+            return ListTile(
+              leading: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.grey[700],
+                ),
+                child: song.albumImage != null && song.albumImage!.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          song.albumImage!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              const Icon(Icons.music_note, color: Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.music_note, color: Colors.white),
+              ),
+              title: Text(
+                song.name,
+                style: const TextStyle(color: Colors.white),
+              ),
+              subtitle: song.artistName != null
+                  ? Text(
+                      song.artistName!,
+                      style: const TextStyle(color: Colors.grey),
+                    )
+                  : null,
+              onTap: () {
+                if (song.audioUrl?.isEmpty ?? true) return;
+                AudioPlayerService().playSong(song);
+              },
+            );
+          },
         );
       },
     );

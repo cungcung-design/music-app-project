@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
+import '../../models/song.dart';
 import 'section_title.dart';
+
 class RecentlyPlayedSection extends StatelessWidget {
-  const RecentlyPlayedSection({super.key});
+  final List<Song> songs;
+  const RecentlyPlayedSection({super.key, required this.songs});
 
   @override
   Widget build(BuildContext context) {
+    if (songs.isEmpty) {
+      return const SizedBox();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -14,32 +21,48 @@ class RecentlyPlayedSection extends StatelessWidget {
           height: 160,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: 6,
+            itemCount: songs.length,
             separatorBuilder: (context, index) => const SizedBox(width: 12),
-            itemBuilder: (context, index) => Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: Colors.grey[800],
-                  ),
-                  child: const Icon(Icons.music_note, color: Colors.white),
+            itemBuilder: (context, index) {
+              final song = songs[index];
+              return GestureDetector(
+                onTap: () {
+                  // Handle song tap - could navigate to NowPlayingPage
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.grey[800],
+                      ),
+                      child: song.albumImage != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                song.albumImage!,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : const Icon(Icons.music_note, color: Colors.white),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: 120,
+                      child: Text(
+                        song.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                const SizedBox(
-                  width: 120,
-                  child: Text(
-                    'Song Name',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ],

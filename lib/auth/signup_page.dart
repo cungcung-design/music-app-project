@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/database_service.dart';
 import '../utils/toast.dart';
-import '../user/user_profile_page.dart';
+import '../user/pages/user_profile_page.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/database_service.dart';
 import '../../models/album.dart';
+import '../../models/artist.dart';
 
 class AlbumDialog extends StatefulWidget {
   final DatabaseService db;
@@ -14,24 +15,57 @@ class AlbumDialog extends StatefulWidget {
 class _AlbumDialogState extends State<AlbumDialog> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
-  final TextEditingController artistIdController = TextEditingController();
-  final TextEditingController coverUrlController = TextEditingController();
+  final TextEditingController albumProfileUrlController =
+      TextEditingController();
+
+  List<Artist> artists = [];
+  bool isLoading = true;
+  String? selectedArtistId;
 
   @override
   void initState() {
     super.initState();
+    _loadArtists();
     if (widget.album != null) {
       nameController.text = widget.album!.name;
-      artistIdController.text = widget.album!.artistId;
-      coverUrlController.text = widget.album!.coverUrl ?? '';
+      selectedArtistId = widget.album!.artistId;
+      albumProfileUrlController.text = widget.album!.albumProfileUrl ?? '';
+    }
+  }
+
+  Future<void> _loadArtists() async {
+    try {
+      final artistsData = await widget.db.getArtists();
+      setState(() {
+        artists = artistsData;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      // Handle error, maybe show a snackbar
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const AlertDialog(
+        backgroundColor: Colors.grey,
+        content: SizedBox(
+          height: 100,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
     return AlertDialog(
       backgroundColor: Colors.grey[900],
-      title: Text(widget.album == null ? "Add Album" : "Edit Album", style: const TextStyle(color: Colors.white)),
+      title: Text(
+        widget.album == null ? "Add Album" : "Edit Album",
+        style: const TextStyle(color: Colors.white),
+      ),
       content: Form(
         key: _formKey,
         child: SizedBox(
@@ -42,21 +76,46 @@ class _AlbumDialogState extends State<AlbumDialog> {
                 TextFormField(
                   controller: nameController,
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(hintText: 'Album Name', hintStyle: TextStyle(color: Colors.grey)),
+                  decoration: const InputDecoration(
+                    hintText: 'Album Name',
+                    hintStyle: TextStyle(color: Colors.grey),
+                  ),
                   validator: (val) => val!.isEmpty ? "Enter album name" : null,
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: artistIdController,
+                DropdownButtonFormField<String>(
+                  value: selectedArtistId,
+                  decoration: const InputDecoration(
+                    hintText: 'Select Artist',
+                    hintStyle: TextStyle(color: Colors.grey),
+                  ),
+                  dropdownColor: Colors.grey[800],
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(hintText: 'Artist ID', hintStyle: TextStyle(color: Colors.grey)),
-                  validator: (val) => val!.isEmpty ? "Enter artist ID" : null,
+                  items: artists.map((artist) {
+                    return DropdownMenuItem<String>(
+                      value: artist.id,
+                      child: Text(
+                        artist.name,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedArtistId = value;
+                    });
+                  },
+                  validator: (val) => val == null ? "Select an artist" : null,
                 ),
                 const SizedBox(height: 12),
+    const SizedBox(height: 12),
                 TextFormField(
-                  controller: coverUrlController,
+                  controller: albumProfileUrlController,
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(hintText: 'Cover URL', hintStyle: TextStyle(color: Colors.grey)),
+                  decoration: const InputDecoration(
+                    hintText: 'Album Profile Path',
+                    hintStyle: TextStyle(color: Colors.grey),
+                  ),
                 ),
               ],
             ),
@@ -64,7 +123,10 @@ class _AlbumDialogState extends State<AlbumDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.white))),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel', style: TextStyle(color: Colors.white)),
+        ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
           onPressed: () async {
@@ -72,15 +134,15 @@ class _AlbumDialogState extends State<AlbumDialog> {
               if (widget.album == null) {
                 await widget.db.addAlbum(
                   name: nameController.text,
-                  artistId: artistIdController.text,
-                  coverUrl: coverUrlController.text,
+                  artistId: selectedArtistId!,
+                  albumProfilePath: albumProfileUrlController.text,
                 );
               } else {
                 await widget.db.updateAlbum(
                   id: widget.album!.id,
                   name: nameController.text,
-                  artistId: artistIdController.text,
-                  coverUrl: coverUrlController.text,
+                  artistId: selectedArtistId!,
+                  albumProfilePath: albumProfileUrlController.text,
                 );
               }
               Navigator.pop(context, true);

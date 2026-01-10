@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../services/database_service.dart';
 import '../../models/song.dart';
+import '../../models/artist.dart';
+import '../../models/album.dart';
 
 class SongDialog extends StatefulWidget {
   final DatabaseService db;
@@ -14,26 +16,62 @@ class SongDialog extends StatefulWidget {
 class _SongDialogState extends State<SongDialog> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
-  final TextEditingController artistIdController = TextEditingController();
-  final TextEditingController albumIdController = TextEditingController();
   final TextEditingController audioUrlController = TextEditingController();
+
+  List<Artist> artists = [];
+  List<Album> albums = [];
+  bool isLoading = true;
+
+  String? selectedArtistId;
+  String? selectedAlbumId;
 
   @override
   void initState() {
     super.initState();
+    _loadData();
     if (widget.song != null) {
       nameController.text = widget.song!.name;
-      artistIdController.text = widget.song!.artistId;
-      albumIdController.text = widget.song!.albumId;
+      selectedArtistId = widget.song!.artistId;
+      selectedAlbumId = widget.song!.albumId;
       audioUrlController.text = widget.song!.audioUrl ?? '';
+    }
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final artistsData = await widget.db.getArtists();
+      final albumsData = await widget.db.getAlbums();
+      setState(() {
+        artists = artistsData;
+        albums = albumsData;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      // Handle error, maybe show a snackbar
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const AlertDialog(
+        backgroundColor: Colors.grey,
+        content: SizedBox(
+          height: 100,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
     return AlertDialog(
       backgroundColor: Colors.grey[900],
-      title: Text(widget.song == null ? "Add Song" : "Edit Song", style: const TextStyle(color: Colors.white)),
+      title: Text(
+        widget.song == null ? "Add Song" : "Edit Song",
+        style: const TextStyle(color: Colors.white),
+      ),
       content: Form(
         key: _formKey,
         child: SizedBox(
@@ -44,28 +82,70 @@ class _SongDialogState extends State<SongDialog> {
                 TextFormField(
                   controller: nameController,
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(hintText: 'Song Name', hintStyle: TextStyle(color: Colors.grey)),
+                  decoration: const InputDecoration(
+                    hintText: 'Song Name',
+                    hintStyle: TextStyle(color: Colors.grey),
+                  ),
                   validator: (val) => val!.isEmpty ? "Enter song name" : null,
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: artistIdController,
+                DropdownButtonFormField<String>(
+                  value: selectedArtistId,
+                  decoration: const InputDecoration(
+                    hintText: 'Select Artist',
+                    hintStyle: TextStyle(color: Colors.grey),
+                  ),
+                  dropdownColor: Colors.grey[800],
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(hintText: 'Artist ID', hintStyle: TextStyle(color: Colors.grey)),
-                  validator: (val) => val!.isEmpty ? "Enter artist ID" : null,
+                  items: artists.map((artist) {
+                    return DropdownMenuItem<String>(
+                      value: artist.id,
+                      child: Text(
+                        artist.name,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedArtistId = value;
+                    });
+                  },
+                  validator: (val) => val == null ? "Select an artist" : null,
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: albumIdController,
+                DropdownButtonFormField<String>(
+                  value: selectedAlbumId,
+                  decoration: const InputDecoration(
+                    hintText: 'Select Album',
+                    hintStyle: TextStyle(color: Colors.grey),
+                  ),
+                  dropdownColor: Colors.grey[800],
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(hintText: 'Album ID', hintStyle: TextStyle(color: Colors.grey)),
-                  validator: (val) => val!.isEmpty ? "Enter album ID" : null,
+                  items: albums.map((album) {
+                    return DropdownMenuItem<String>(
+                      value: album.id,
+                      child: Text(
+                        album.name,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedAlbumId = value;
+                    });
+                  },
+                  validator: (val) => val == null ? "Select an album" : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: audioUrlController,
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(hintText: 'Audio URL', hintStyle: TextStyle(color: Colors.grey)),
+                  decoration: const InputDecoration(
+                    hintText: 'Audio URL',
+                    hintStyle: TextStyle(color: Colors.grey),
+                  ),
                 ),
               ],
             ),
@@ -84,16 +164,16 @@ class _SongDialogState extends State<SongDialog> {
               if (widget.song == null) {
                 await widget.db.addSong(
                   name: nameController.text,
-                  artistId: artistIdController.text,
-                  albumId: albumIdController.text,
+                  artistId: selectedArtistId!,
+                  albumId: selectedAlbumId!,
                   audioUrl: audioUrlController.text,
                 );
               } else {
                 await widget.db.updateSong(
                   id: widget.song!.id,
                   name: nameController.text,
-                  artistId: artistIdController.text,
-                  albumId: albumIdController.text,
+                  artistId: selectedArtistId!,
+                  albumId: selectedAlbumId!,
                   audioUrl: audioUrlController.text,
                 );
               }
