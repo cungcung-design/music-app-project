@@ -57,7 +57,7 @@ class _MyAppState extends State<MyApp> {
 
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: UserHomePage(), // ✅ DIRECT ADMIN ACCESS
+      home: AdminHomePage(), // ✅ DIRECT ADMIN ACCESS
     );
   }
 }

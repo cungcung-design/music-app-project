@@ -146,6 +146,27 @@ class DatabaseService {
     final data = List<Map<String, dynamic>>.from(res);
     return data.map((e) => Profile.fromMap(e, supabase: supabase)).toList();
   }
+  Future<void> addUser({
+    required String name,
+    required String email,
+    required String country,
+  }) async {
+    final id = const Uuid().v4();
+
+    final response = await supabase.from('profiles').insert({
+      'id': id,
+      'name': name,
+      'email': email,
+      'country': country,
+    });
+
+    if (response.error != null) {
+      throw response.error!.message;
+    }
+  }
+
+
+
 
   Future<void> deleteUser(String userId) async {
     final res = await supabase

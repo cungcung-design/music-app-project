@@ -3,6 +3,9 @@ import '../../services/database_service.dart';
 import '../../models/profile.dart';
 import 'user_detail_page.dart';
 import '../../utils/toast.dart';
+import '../widgets/add_user.dart';
+
+// import 'add_user_page.dart'; // 👈 create later if needed
 
 class ManageUsersPage extends StatefulWidget {
   const ManageUsersPage({super.key});
@@ -13,33 +16,51 @@ class ManageUsersPage extends StatefulWidget {
 
 class _ManageUsersPageState extends State<ManageUsersPage> {
   late Future<List<Profile>> _usersFuture;
+  final DatabaseService db = DatabaseService();
 
   @override
   void initState() {
     super.initState();
-    _usersFuture = DatabaseService().getAllUsers();
+    _usersFuture = db.getAllUsers();
   }
 
   void _refreshUsers() {
     setState(() {
-      _usersFuture = DatabaseService().getAllUsers();
+      _usersFuture = db.getAllUsers();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final db = DatabaseService();
-
     return Scaffold(
-      backgroundColor: Colors.black, // DARK BACKGROUND
+      backgroundColor: Colors.black,
+
       appBar: AppBar(
         title: const Text('Manage Users'),
         backgroundColor: Colors.black,
       ),
+
+      // 🔥 FLOATING ADD BUTTON
+      floatingActionButton: FloatingActionButton(
+  backgroundColor: Colors.green,
+  child: const Icon(Icons.add, color: Colors.black),
+  onPressed: () async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AddUserPage()),
+    );
+
+    if (result == true) {
+      _refreshUsers();
+    }
+  },
+),
+
+
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: FutureBuilder<List<Profile>>(
-          future: db.getAllUsers(),
+          future: _usersFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
@@ -73,11 +94,10 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
                 final user = users[index];
 
                 return Card(
-                  color: Colors.grey[850], // DARK CARD
+                  color: Colors.grey[850],
                   margin: const EdgeInsets.symmetric(vertical: 8),
                   child: ListTile(
                     onTap: () {
-                      // Navigate to user detail page
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -107,7 +127,6 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
                       icon: const Icon(Icons.more_vert, color: Colors.white),
                       onSelected: (value) async {
                         if (value == 'edit') {
-                          // Navigate to edit page (you can create an EditUserPage)
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -128,12 +147,9 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
                           }
                         }
                       },
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Text('Delete'),
-                        ),
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(value: 'edit', child: Text('Edit')),
+                        PopupMenuItem(value: 'delete', child: Text('Delete')),
                       ],
                     ),
                   ),
