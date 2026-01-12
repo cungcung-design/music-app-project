@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/database_service.dart';
 import '../utils/toast.dart';
-import '../user/pages/user_profile_page.dart';
+import '../user/pages/profile_form_page.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -45,7 +45,7 @@ class _SignupPageState extends State<SignupPage> {
                 if (db.currentUser != null) {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (_) => const UserProfilePage()),
+                    MaterialPageRoute(builder: (_) => const ProfileFormPage()),
                   );
                 }
               } catch (e) {

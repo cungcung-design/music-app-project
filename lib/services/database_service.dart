@@ -80,15 +80,30 @@ class DatabaseService {
 
   // -------------------- PROFILE --------------------
   Future<Profile?> getProfile(String userId) async {
+    print('getProfile: fetching profile for userId = $userId');
     final data = await supabase
         .from('profiles')
         .select()
         .eq('id', userId)
         .maybeSingle();
 
-    return data != null
-        ? Profile.fromMap(data as Map<String, dynamic>, supabase: supabase)
-        : null;
+    print('getProfile: data received = $data');
+    if (data != null) {
+      try {
+        final profile = Profile.fromMap(
+          data as Map<String, dynamic>,
+          supabase: supabase,
+        );
+        print('getProfile: successfully created profile for ${profile.name}');
+        return profile;
+      } catch (error) {
+        print('getProfile: error creating profile: $error');
+        return null;
+      }
+    } else {
+      print('getProfile: no data found for userId = $userId');
+      return null;
+    }
   }
 
   // -------------------------------
@@ -96,6 +111,7 @@ class DatabaseService {
   // -------------------------------
   Future<Profile?> getUserProfile() async {
     final user = supabase.auth.currentUser;
+    print('getUserProfile: currentUser = ${user?.id}');
     if (user == null) return null;
     return getProfile(user.id);
   }
@@ -117,6 +133,26 @@ class DatabaseService {
       if (country != null) 'country': country,
       if (avatarPath != null) 'avatar_url': avatarPath,
     });
+  }
+
+  // -------------------------------
+  // SAVE PROFILE (with default name if null)
+  // -------------------------------
+  Future<void> saveProfile(Profile profile) async {
+    final user = currentUser;
+    if (user == null) throw Exception('User not logged in');
+
+    final nameToSave = (profile.name == null || profile.name!.isEmpty)
+        ? 'Unknown'
+        : profile.name!;
+
+    await updateProfile(
+      userId: user.id,
+      name: nameToSave,
+      dob: profile.dob,
+      country: profile.country,
+      avatarPath: profile.avatarPath,
+    );
   }
 
   // -------------------------------
@@ -178,11 +214,15 @@ class DatabaseService {
   Future<List<Profile>> getAllUsers() async {
     final res = await supabase.from('profiles').select().order('name');
     final data = List<Map<String, dynamic>>.from(res);
+    print('getAllUsers: fetched ${data.length} profiles');
 
     return data.map((e) {
       try {
-        return Profile.fromMap(e, supabase: supabase);
-      } catch (_) {
+        final profile = Profile.fromMap(e, supabase: supabase);
+        print('getAllUsers: successfully created profile for ${profile.name}');
+        return profile;
+      } catch (error) {
+        print('getAllUsers: error creating profile for ${e['name']}: $error');
         return Profile(
           id: e['id'] ?? '',
           name: e['name'] ?? 'Unknown',
@@ -684,6 +724,42 @@ class DatabaseService {
         .ilike('name', '%$query%')
         .order('name');
     final data = List<Map<String, dynamic>>.from(res);
+    final albumMap = await getAlbumCoverMap();
+    final artistMap = Map<String, String>.fromEntries(
+      (await supabase.from('artists').select()).map(
+        (e) => MapEntry(e['id'].toString(), e['name'].toString()),
+      ),
+    );
+    return data.map((e) {
+      final audioUrl = resolveUrl(
+        supabase: supabase,
+        bucket: 'song_audio',
+        value: e['audio_url'],
+      );
+      final albumId = e['album_id']?.toString() ?? '';
+      final albumImage = albumId.isNotEmpty ? albumMap[albumId] : null;
+      final artistId = e['artist_id']?.toString();
+      final artistName = artistId != null ? artistMap[artistId] : null;
+      return Song(
+        id: e['id'].toString(),
+        name: e['name'] ?? '',
+        artistId: artistId ?? '',
+        albumId: albumId,
+        audioUrl: audioUrl,
+        albumImage: albumImage,
+        artistName: artistName,
+      );
+    }).toList();
+  }
+
+  // -------------------- POPULAR SONGS --------------------
+  Future<List<Song>> getPopularSongs({int limit = 10}) async {
+    final songsRes = await supabase
+        .from('songs')
+        .select()
+        .order('play_count', ascending: false)
+        .limit(limit);
+    final data = List<Map<String, dynamic>>.from(songsRes);
     final albumMap = await getAlbumCoverMap();
     final artistMap = Map<String, String>.fromEntries(
       (await supabase.from('artists').select()).map(

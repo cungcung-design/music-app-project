@@ -1,3 +1,3 @@
-- [x] Remove seeding button and logic from dashboard_page.dart
-- [x] Remove sync button and logic from admin_home.dart
-- [x] Delete database_seeder.dart file
+- [ ] Update Profile model to make name optional (String?)
+- [ ] Add saveProfile method in database_service.dart
+- [ ] Modify profile_form_page.dart to allow optional name

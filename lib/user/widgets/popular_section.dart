@@ -2,37 +2,44 @@ import 'package:flutter/material.dart';
 import '../../models/song.dart';
 import 'section_title.dart';
 
-class RecommendedSection extends StatelessWidget {
+class PopularSection extends StatefulWidget {
   final List<Song> songs;
   final Function(Song) onSongTap;
 
-  const RecommendedSection({
+  const PopularSection({
     super.key,
     required this.songs,
     required this.onSongTap,
   });
 
   @override
+  State<PopularSection> createState() => _PopularSectionState();
+}
+
+class _PopularSectionState extends State<PopularSection> {
+  @override
   Widget build(BuildContext context) {
-    if (songs.isEmpty) {
-      return const SizedBox(); // nothing to show
+    // If no songs are provided, hide the section entirely
+    if (widget.songs.isEmpty) {
+      return const SizedBox();
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionTitle('Recommended for You'),
+        const SectionTitle('Popular Songs'),
         const SizedBox(height: 12),
         SizedBox(
-          height: 170,
+          height: 185, 
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: songs.length,
+            itemCount: widget.songs.length,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             separatorBuilder: (context, index) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
-              final song = songs[index];
+              final song = widget.songs[index];
               return GestureDetector(
-                onTap: () => onSongTap(song),
+                onTap: () => widget.onSongTap(song),
                 child: Container(
                   width: 160,
                   decoration: BoxDecoration(
@@ -50,6 +57,7 @@ class RecommendedSection extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Song Image Section
                       ClipRRect(
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(16),
@@ -62,17 +70,21 @@ class RecommendedSection extends StatelessWidget {
                             song.albumImage ?? '',
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) =>
-                                const Icon(
-                                  Icons.music_note,
-                                  color: Colors.white,
-                                  size: 40,
-                                ),
+                                Container(
+                              color: Colors.grey[800],
+                              child: const Icon(
+                                Icons.music_note,
+                                color: Colors.white,
+                                size: 40,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
+                      // Song Title
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
                         child: Text(
                           song.name,
                           style: const TextStyle(
@@ -84,13 +96,11 @@ class RecommendedSection extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      // Artist Name
                       Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
                         child: Text(
-                          song.artistName ?? "",
+                          song.artistName ?? "Unknown Artist",
                           style: const TextStyle(
                             color: Colors.grey,
                             fontSize: 12,

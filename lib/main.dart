@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:project/user/pages/complete_profile_page.dart';
+import 'package:project/user/pages/profile_form_page.dart';
+import 'package:project/user/pages/user_profile_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import './home_page.dart';
 import 'auth/login_page.dart';
-import 'auth/signup_page.dart';
-
+import 'home_page.dart';
 import 'admin/pages/admin_home.dart';
 import 'services/database_service.dart';
+import "user/pages/profile_form_page.dart";
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,16 +52,33 @@ class _MyAppState extends State<MyApp> {
         debugShowCheckedModeBanner: false,
         home: Scaffold(
           backgroundColor: Colors.black,
-          body: Center(
-            child: CircularProgressIndicator(color: Colors.green),
-          ),
+          body: Center(child: CircularProgressIndicator(color: Colors.green)),
         ),
       );
     }
 
+    final user = Supabase.instance.client.auth.currentUser;
+
+    // Step 1: Not logged in → show LoginPage
+    if (user == null) {
+      return const MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: LoginPage(),
+      );
+    }
+
+    // Step 2: Admin user → go to AdminHomePage
+    if (user.email == 'admin@example.com') {
+      return const MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: AdminHomePage(),
+      );
+    }
+
+    // Step 3: Normal logged-in user → UserHomePage
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: AdminHomePage(), // ✅ DIRECT ADMIN ACCESS
+      home: UserHomePage(),
     );
   }
 }

@@ -4,7 +4,7 @@ import '../../models/song.dart';
 import '../../models/suggested.dart';
 import '../../services/audio_player_service.dart';
 import '../widgets/playing_song_page.dart';
-import '../widgets/mini_player.dart'; // Make sure this is imported
+import '../widgets/mini_player.dart';
 import '../../utils/toast.dart';
 
 class SuggestedPage extends StatefulWidget {
@@ -29,30 +29,38 @@ class _SuggestedPageState extends State<SuggestedPage> {
   Future<void> _loadFavorites() async {
     try {
       final favorites = await widget.db.getFavorites();
-      setState(() {
-        _favoriteSongIds = favorites.map((song) => song.id).toSet();
-      });
+      if (mounted) {
+        setState(() {
+          _favoriteSongIds = favorites.map((song) => song.id).toSet();
+        });
+      }
     } catch (e) {
-      // Handle error silently or show toast
+      debugPrint("Error loading favorites: $e");
     }
   }
 
   Future<SuggestedData> fetchData() async {
-    final artists = await widget.db.getArtists();
-    final allSongs = await widget.db.getSongsWithDetails();
-    final recentlyPlayed = allSongs
-      ..sort((a, b) => (b.playCount ?? 0).compareTo(a.playCount ?? 0));
+    try {
+      final artists = await widget.db.getArtists();
+      final allSongs = await widget.db.getSongsWithDetails();
+      
+      // Sort Recently Played by playCount descending
+      final recentlyPlayed = allSongs.toList()
+        ..sort((a, b) => (b.playCount ?? 0).compareTo(a.playCount ?? 0));
 
-    return SuggestedData(
-      recentlyPlayed: recentlyPlayed.take(5).toList(),
-      recommended: [], // Add your logic for recommended
-      artists: artists,
-    );
+      return SuggestedData(
+        recentlyPlayed: recentlyPlayed.take(10).toList(), // Show up to 10
+        recommended: [], // Empty as requested
+        artists: artists,
+      );
+    } catch (e) {
+      debugPrint("Error fetching data: $e");
+      return SuggestedData(recentlyPlayed: [], recommended: [], artists: []);
+    }
   }
 
   void _playSong(Song song) {
     AudioPlayerService().playSong(song);
-    // Optional: Auto-open the full screen page
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => NowPlayingPage(song: song)),
@@ -64,15 +72,11 @@ class _SuggestedPageState extends State<SuggestedPage> {
     try {
       if (isFavorite) {
         await widget.db.removeFromFavorites(song.id);
-        setState(() {
-          _favoriteSongIds.remove(song.id);
-        });
+        setState(() => _favoriteSongIds.remove(song.id));
         showToast(context, 'Removed from favorites');
       } else {
         await widget.db.addToFavorites(song.id);
-        setState(() {
-          _favoriteSongIds.add(song.id);
-        });
+        setState(() => _favoriteSongIds.add(song.id));
         showToast(context, 'Added to favorites');
       }
     } catch (e) {
@@ -82,39 +86,53 @@ class _SuggestedPageState extends State<SuggestedPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        FutureBuilder<SuggestedData>(
-          future: _dataFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(color: Colors.green),
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          FutureBuilder<SuggestedData>(
+            future: _dataFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(color: Colors.green),
+                );
+              }
+              
+              if (!snapshot.hasData || snapshot.data!.recentlyPlayed.isEmpty) {
+                return const Center(
+                  child: Text("No recently played songs", 
+                  style: TextStyle(color: Colors.white70)),
+                );
+              }
+
+              final data = snapshot.data!;
+
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _sectionTitle('Recently Played'),
+                    const SizedBox(height: 12),
+                    _songList(data.recentlyPlayed),
+
+                    // No Recommended section here anymore
+                    
+                    const SizedBox(height: 120), // Padding for MiniPlayer
+                  ],
+                ),
               );
-            }
-            if (!snapshot.hasData) return const SizedBox();
+            },
+          ),
 
-            final data = snapshot.data!;
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _sectionTitle('Recently Played'),
-                  const SizedBox(height: 12),
-                  _songList(data.recentlyPlayed),
-                  const SizedBox(
-                    height: 110,
-                  ), // Space so bottom list items aren't hidden
-                ],
-              ),
-            );
-          },
-        ),
-
-        // The dedicated MiniPlayer widget
-        const Align(alignment: Alignment.bottomCenter, child: MiniPlayer()),
-      ],
+          // MiniPlayer at the bottom
+          const Align(
+            alignment: Alignment.bottomCenter, 
+            child: MiniPlayer()
+          ),
+        ],
+      ),
     );
   }
 
@@ -123,7 +141,7 @@ class _SuggestedPageState extends State<SuggestedPage> {
       title,
       style: const TextStyle(
         color: Colors.white,
-        fontSize: 20,
+        fontSize: 22,
         fontWeight: FontWeight.bold,
       ),
     );
@@ -131,54 +149,65 @@ class _SuggestedPageState extends State<SuggestedPage> {
 
   Widget _songList(List<Song> songs) {
     return SizedBox(
-      height: 200, // Increased height to accommodate favorite icon
+      height: 200, 
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: songs.length,
         itemBuilder: (context, index) {
           final song = songs[index];
           final isFavorite = _favoriteSongIds.contains(song.id);
+          
           return GestureDetector(
             onTap: () => _playSong(song),
             child: Padding(
-              padding: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.only(right: 16),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Stack(
                     children: [
                       Container(
-                        width: 120,
-                        height: 120,
+                        width: 140,
+                        height: 140,
                         decoration: BoxDecoration(
-                          color: Colors.grey[800],
-                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.grey[900],
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: song.albumImage != null
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: (song.albumImage != null && song.albumImage!.isNotEmpty)
+                              ? Image.network(
                                   song.albumImage!,
                                   fit: BoxFit.cover,
-                                ),
-                              )
-                            : const Icon(Icons.music_note, color: Colors.white),
+                                  errorBuilder: (context, e, s) => const Icon(Icons.music_note, color: Colors.white),
+                                )
+                              : const Icon(Icons.music_note, color: Colors.white, size: 40),
+                        ),
                       ),
                       Positioned(
-                        top: 8,
-                        right: 8,
+                        top: 4,
+                        right: 4,
                         child: IconButton(
                           icon: Icon(
                             isFavorite ? Icons.favorite : Icons.favorite_border,
                             color: isFavorite ? Colors.red : Colors.white,
-                            size: 24,
                           ),
                           onPressed: () => _toggleFavorite(song),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(song.name, style: const TextStyle(color: Colors.white)),
+                  const SizedBox(height: 8),
+                  Text(
+                    song.name,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    song.artistName ?? 'Unknown Artist',
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
                 ],
               ),
             ),

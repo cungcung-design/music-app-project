@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class Profile {
   final String id; // User ID (from Supabase Auth)
   final String email; // User email
-  final String name; // User name
+  final String? name; // User name (optional)
   final String? avatarPath; // file name in Supabase
   String? avatarUrl; // public URL
   final String? dob; // Optional date of birth
@@ -12,7 +12,7 @@ class Profile {
   Profile({
     required this.id,
     required this.email,
-    required this.name,
+    this.name,
     this.avatarPath,
     this.avatarUrl,
     this.dob,
