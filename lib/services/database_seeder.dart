@@ -1,9 +1,6 @@
-import 'dart:io';
 import 'dart:math';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
-import 'package:path/path.dart' as p;
-
 import 'database_service.dart';
 import '../models/artist.dart';
 import '../models/album.dart';
@@ -17,94 +14,108 @@ Future<void> seedDatabase() async {
   final supabase = Supabase.instance.client;
   print('--- Database Seeding Started ---');
 
-  // ===================== 1️⃣ SEED ARTISTS =====================
-  print('Step 1: Syncing Artists...');
+
+  // ---------------- 1️⃣ SEED ARTISTS ----------------
+  print('Step 1: Seeding Artists...');
   final artistFiles = await supabase.storage.from('artist_profiles').list();
-  print('Found ${artistFiles.length} files in artist_profiles bucket');
+  final List<Artist> artists = [];
 
   for (final file in artistFiles) {
     if (file.name == '.emptyFolderPlaceholder') continue;
 
-    // Check if artist already exists
-    final exists = await supabase
+    final artistName = file.name.split('.').first.replaceAll('_', ' ');
+    print('Adding artist: $artistName');
+
+    await supabase.from('artists').insert({
+      'name': artistName,
+      'bio': 'Bio for $artistName',
+      'artist_url': file.name,
+    });
+
+    // Get the generated id
+    final inserted = await supabase
         .from('artists')
-        .select()
-        .eq('artist_url', file.name);
+        .select('id')
+        .eq('name', artistName)
+        .single();
+    final artistId = inserted['id'] as String;
 
-    if ((exists as List).isEmpty) {
-      final artistName = file.name.split('.').first.replaceAll('_', ' ');
-      print('Adding new artist: $artistName');
-
-      await db.addArtist(
+    // Store locally for album assignment
+    artists.add(
+      Artist(
+        id: artistId,
         name: artistName,
         bio: 'Bio for $artistName',
-        artistProfilePath: file.name,
-      );
-    }
-  }
-
-  final artists = await db.getArtists();
-  if (artists.isEmpty) {
-    throw Exception(
-      'Artists table is empty after seeding. Check database permissions.',
+        artistProfileUrl: file.name,
+      ),
     );
   }
 
-  // ===================== 2️⃣ SEED ALBUMS =====================
-  print('Step 2: Syncing Albums...');
+  if (artists.isEmpty) {
+    throw Exception('No artists found in bucket or database.');
+  }
+
+  // ---------------- 2️⃣ SEED ALBUMS ----------------
+  print('Step 2: Seeding Albums...');
   final albumFiles = await supabase.storage.from('album_covers').list();
+  final List<Album> albums = [];
 
   for (final file in albumFiles) {
     if (file.name == '.emptyFolderPlaceholder') continue;
 
-    final exists = await supabase
+    final albumName = file.name.split('.').first.replaceAll('_', ' ');
+    final randomArtist =
+        artists[random.nextInt(artists.length)]; // Pick random artist
+
+    await supabase.from('albums').insert({
+      'name': albumName,
+      'artist_id': randomArtist.id, // UUID string
+      'album_url': file.name,
+    });
+
+    // Get the generated id
+    final inserted = await supabase
         .from('albums')
-        .select()
-        .eq('album_url', file.name);
+        .select('id')
+        .eq('name', albumName)
+        .single();
+    final albumId = inserted['id'] as String;
 
-    if ((exists as List).isEmpty) {
-      final randomArtistId = artists[random.nextInt(artists.length)].id;
-      final albumName = file.name.split('.').first.replaceAll('_', ' ');
-
-      await db.addAlbum(
+    albums.add(
+      Album(
+        id: albumId,
         name: albumName,
-        artistId: randomArtistId,
-      
+        artistId: randomArtist.id,
         albumProfilePath: file.name,
-      );
-
-      print('Inserted album: $albumName');
-    }
+      ),
+    );
+    print('Inserted album: $albumName for artist: ${randomArtist.name}');
   }
 
-  final albums = await db.getAlbums();
-  if (albums.isEmpty) print('No albums found for songs seeding.');
+  if (albums.isEmpty) {
+    print('No albums found, skipping songs seeding.');
+    return;
+  }
 
-  // ===================== 3️⃣ SEED SONGS =====================
-  print('Step 3: Syncing Songs...');
+  // ---------------- 3️⃣ SEED SONGS ----------------
+  print('Step 3: Seeding Songs...');
   final songFiles = await supabase.storage.from('song_audio').list();
 
   for (final file in songFiles) {
     if (file.name == '.emptyFolderPlaceholder') continue;
 
-    final exists = await supabase
-        .from('songs')
-        .select()
-        .eq('audio_url', file.name);
+    final songName = file.name.split('.').first.replaceAll('_', ' ');
+    final randomAlbum =
+        albums[random.nextInt(albums.length)]; // Pick random album
 
-    if ((exists as List).isEmpty && albums.isNotEmpty) {
-      final randomAlbum = albums[random.nextInt(albums.length)];
-      final songName = file.name.split('.').first.replaceAll('_', ' ');
+    await db.addSong(
+      name: songName,
+      artistId: randomAlbum.artistId, // UUID string
+      albumId: randomAlbum.id,
+      audioUrl: file.name,
+    );
 
-      await db.addSong(
-        name: songName,
-        artistId: randomAlbum.artistId,
-        albumId: randomAlbum.id,
-        audioUrl: file.name,
-      );
-
-      print('Inserted song: $songName');
-    }
+    print('Inserted song: $songName into album: ${randomAlbum.name}');
   }
 
   print('--- Database Seeding Completed Successfully ---');

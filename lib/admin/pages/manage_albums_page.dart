@@ -25,6 +25,7 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
     loadAlbums();
     loadArtists();
   }
+  
 
   Future<void> loadAlbums() async {
     setState(() => loading = true);
@@ -133,27 +134,19 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
                 }
 
                 try {
-                  String? albumProfilePath = album?.albumProfilePath;
-
-                  if (selectedCover != null) {
-                    albumProfilePath = await db.uploadAlbumCover(
-                      selectedCover!,
-                    );
-                  }
-
                   if (album == null) {
                     await db.addAlbum(
                       name: name,
                       artistId: selectedArtist!.id,
-                      albumProfilePath: albumProfilePath!,
+                      coverFile: selectedCover,
                     );
                     showToast(context, "Album added ✅");
                   } else {
                     await db.updateAlbum(
-                      id: album.id,
+                      albumId: album.id,
                       name: name,
                       artistId: selectedArtist!.id,
-                      albumProfilePath: albumProfilePath!,
+                      newCoverFile: selectedCover,
                     );
                     showToast(context, "Album updated ✅");
                   }

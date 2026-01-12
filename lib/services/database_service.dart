@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path/path.dart' as p;
@@ -15,9 +16,13 @@ class DatabaseService {
   // -------------------- Helper --------------------
   String? getStorageUrl(String? path, String bucket) {
     if (path == null || path.isEmpty) return null;
-    return path.startsWith('http')
+    final url = path.startsWith('http')
         ? path
         : supabase.storage.from(bucket).getPublicUrl(path);
+    // Check if URL contains placeholder (not configured)
+    if (url.contains('your_supabase_url')) return null;
+    print('Generated URL for $bucket/$path: $url');
+    return url;
   }
 
   // -------------------- AUTH --------------------
@@ -128,307 +133,201 @@ class DatabaseService {
     await supabase.from('profiles').delete().eq('id', userId);
   }
 
-  // -------------------- ARTISTS --------------------
+  // ===================== ARTISTS =====================
+  // Get all artists
   Future<List<Artist>> getArtists() async {
-    final res = await supabase.from('artists').select().order('name');
-    final data = List<Map<String, dynamic>>.from(res);
-
-    return data.map((e) {
-      final artistPath = e['artist_url'] as String?;
-      return Artist(
-        id: e['id'].toString(),
-        name: e['name'] ?? '',
-        bio: e['bio'] ?? '',
-        about: e['about'],
-        artistProfilePath: artistPath,
-        artistProfileUrl: getStorageUrl(artistPath, 'artist_profiles'),
-      );
-    }).toList();
+    final data = await supabase.from('artists').select();
+    return List<Map<String, dynamic>>.from(
+      data,
+    ).map((e) => Artist.fromMap(e, supabase: supabase)).toList();
   }
 
-  // -------------------- ARTISTS --------------------
-
-  Future<void> updateArtist({
-    required String id,
-    required String name,
-    required String bio,
-    required String artistProfilePath, // this is the storage path
-    String? about,
-  }) async {
-    // If there is an old image, you can remove it (optional)
-    final oldArtist = await supabase
-        .from('artists')
-        .select('artist_url')
-        .eq('id', id)
-        .maybeSingle();
-
-    if (oldArtist != null && oldArtist['artist_url'] != null) {
-      final oldPath = oldArtist['artist_url'] as String;
-      if (oldPath.isNotEmpty && oldPath != artistProfilePath) {
-        try {
-          await supabase.storage.from('artist_profiles').remove([oldPath]);
-        } catch (e) {
-          // Ignore if removal fails
-          print('Failed to remove old artist image: $e');
-        }
-      }
-    }
-
-    // Update artist info in database
-    await supabase
-        .from('artists')
-        .update({
-          'name': name,
-          'bio': bio,
-          'about': about,
-          'artist_url': artistProfilePath,
-        })
-        .eq('id', id);
-  }
-
-  Future<void> deleteArtist(String id) async {
-    // Get artist record to find the image path
-    final res = await supabase
-        .from('artists')
-        .select('artist_url')
-        .eq('id', id)
-        .maybeSingle();
-
-    if (res != null && res['artist_url'] != null) {
-      final path = res['artist_url'] as String;
-      if (path.isNotEmpty) {
-        try {
-          // Remove image from Supabase storage
-          await supabase.storage.from('artist_profiles').remove([path]);
-        } catch (e) {
-          // Ignore if removal fails
-          print('Failed to delete artist image: $e');
-        }
-      }
-    }
-
-    // Delete artist from database
-    await supabase.from('artists').delete().eq('id', id);
-  }
-
+  // Add new artist with image
   Future<void> addArtist({
     required String name,
-    required String bio,
-    required String artistProfilePath,
+    String? bio,
     String? about,
+    Uint8List? imageBytes, // optional artist image
   }) async {
+    String? imageUrl;
+    if (imageBytes != null) {
+      final path = 'artist_${DateTime.now().millisecondsSinceEpoch}.png';
+      await supabase.storage
+          .from('artist_profiles')
+          .uploadBinary(
+            path,
+            imageBytes,
+            fileOptions: const FileOptions(
+              upsert: true,
+              contentType: 'image/png',
+            ),
+          );
+      imageUrl = path;
+    }
+
     await supabase.from('artists').insert({
-      'id': uuid.v4(),
       'name': name,
-      'bio': bio,
+      'bio': bio ?? '',
       'about': about,
-      'artist_url': artistProfilePath,
+      'artist_url': imageUrl,
     });
   }
 
-  Future<String> uploadArtistProfile(File file, {String? oldPath}) async {
-    // Remove old file if exists
-    if (oldPath != null && oldPath.isNotEmpty) {
-      try {
-        await supabase.storage.from('artist_profiles').remove([oldPath]);
-      } catch (_) {
-        // ignore if removal fails
-      }
-    }
-
-    // Prepare file name
-    final extension = p.extension(file.path).toLowerCase();
-    final fileName =
-        '${DateTime.now().millisecondsSinceEpoch}_${p.basename(file.path)}';
-
-    // Detect content type
-    String contentType;
-    switch (extension) {
-      case '.jpg':
-      case '.jpeg':
-        contentType = 'image/jpeg';
-        break;
-      case '.png':
-        contentType = 'image/png';
-        break;
-      case '.gif':
-        contentType = 'image/gif';
-        break;
-      case '.webp':
-        contentType = 'image/webp';
-        break;
-      default:
-        contentType = 'image/jpeg'; // fallback
-    }
-
-    // Upload file
-    await supabase.storage
-        .from('artist_profiles')
-        .uploadBinary(
-          fileName,
-          await file.readAsBytes(),
-          fileOptions: FileOptions(upsert: true, contentType: contentType),
-        );
-
-    // Return public URL
-    return supabase.storage.from('artist_profiles').getPublicUrl(fileName);
-  }
-
-  /// Upload from URL
-  Future<String> uploadArtistProfileFromUrl(
-    String url, {
-    String? oldPath,
+  // Update artist info & image
+  Future<void> updateArtist({
+    required String artistId,
+    String? name,
+    String? bio,
+    String? about,
+    Uint8List? newImageBytes,
   }) async {
-    try {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode != 200) {
-        throw Exception('Failed to download image from URL');
-      }
+    Map<String, dynamic> updateData = {};
+    if (name != null) updateData['name'] = name;
+    if (bio != null) updateData['bio'] = bio;
+    if (about != null) updateData['about'] = about;
 
-      // Create temp file
-      final tempDir = Directory.systemTemp;
-      final extension = p.extension(url).toLowerCase();
-      final tempFile = File(
-        '${tempDir.path}/temp_${DateTime.now().millisecondsSinceEpoch}$extension',
-      );
-      await tempFile.writeAsBytes(response.bodyBytes);
-
-      // Upload using main function
-      final uploadedPath = await uploadArtistProfile(
-        tempFile,
-        oldPath: oldPath,
-      );
-
-      // Delete temp file
-      await tempFile.delete();
-
-      return uploadedPath;
-    } catch (e) {
-      throw Exception('Error uploading image from URL: $e');
+    if (newImageBytes != null) {
+      // Upload new image
+      final path = 'artist_${DateTime.now().millisecondsSinceEpoch}.png';
+      await supabase.storage
+          .from('artist_profiles')
+          .uploadBinary(
+            path,
+            newImageBytes,
+            fileOptions: const FileOptions(
+              upsert: true,
+              contentType: 'image/png',
+            ),
+          );
+      updateData['artist_url'] = path;
     }
+
+    await supabase.from('artists').update(updateData).eq('id', artistId);
   }
 
-  // -------------------- ALBUMS --------------------
+  // Delete artist (also deletes related albums if cascade is set in SQL)
+  Future<void> deleteArtist(String artistId) async {
+    // First, get the artist's image URL to delete from storage
+    final res = await supabase
+        .from('artists')
+        .select('artist_url')
+        .eq('id', artistId)
+        .maybeSingle();
+    if (res != null && res['artist_url'] != null) {
+      await supabase.storage.from('artist_profiles').remove([
+        res['artist_url'],
+      ]);
+    }
+    // Then delete the artist (cascade will handle related albums and songs)
+    await supabase.from('artists').delete().eq('id', artistId);
+  }
+
+  // ===================== ALBUMS =====================
+  // Get all albums
   Future<List<Album>> getAlbums() async {
-    final res = await supabase.from('albums').select().order('name');
-    final data = List<Map<String, dynamic>>.from(res);
-
-    return data.map((e) {
-      final albumPath = e['album_url'] as String?;
-      return Album(
-        id: e['id'].toString(),
-        name: e['name'] ?? '',
-        artistId: e['artist_id']?.toString() ?? '',
-        albumProfilePath: albumPath,
-        albumProfileUrl: getStorageUrl(albumPath, 'album_covers'),
-      );
-    }).toList();
+    final data = await supabase.from('albums').select();
+    return List<Map<String, dynamic>>.from(
+      data,
+    ).map((e) => Album.fromMap(e, supabase: supabase)).toList();
   }
 
-  Future<List<Album>> getAlbumsByArtist(String artistId) async {
-    final response = await supabase
-        .from('albums')
-        .select()
-        .eq('artist_id', artistId)
-        .order('name');
-
-    return response.map<Album>((e) => Album.fromMap(e)).toList();
-  }
-
+  // Add new album with cover image
   Future<void> addAlbum({
     required String name,
     required String artistId,
-    required String albumProfilePath,
+    File? coverFile, // optional album cover
   }) async {
+    String? albumUrl;
+    if (coverFile != null) {
+      final path = 'album_${DateTime.now().millisecondsSinceEpoch}.png';
+      await supabase.storage.from('album_covers').upload(path, coverFile);
+      albumUrl = path;
+    }
+
     await supabase.from('albums').insert({
-      'id': uuid.v4(),
       'name': name,
       'artist_id': artistId,
-      'album_url': albumProfilePath,
+      'album_url': albumUrl,
     });
   }
 
+  // Update album info & cover
   Future<void> updateAlbum({
-    required String id,
-    required String name,
-    required String artistId,
-    required String albumProfilePath,
+    required String albumId,
+    String? name,
+    String? artistId,
+    File? newCoverFile,
   }) async {
-    await supabase
-        .from('albums')
-        .update({
-          'name': name,
-          'artist_id': artistId,
-          'album_url': albumProfilePath,
-        })
-        .eq('id', id);
-  }
+    Map<String, dynamic> updateData = {};
+    if (name != null) updateData['name'] = name;
+    if (artistId != null) updateData['artist_id'] = artistId;
 
-  Future<void> deleteAlbum(String id) async {
-    final res = await supabase
-        .from('albums')
-        .select('album_url')
-        .eq('id', id)
-        .maybeSingle();
-    if (res != null && res['album_url'] != null) {
-      await supabase.storage.from('album_covers').remove([res['album_url']]);
+    if (newCoverFile != null) {
+      final path = 'album_${DateTime.now().millisecondsSinceEpoch}.png';
+      await supabase.storage.from('album_covers').upload(path, newCoverFile);
+      updateData['album_url'] = path;
     }
-    await supabase.from('albums').delete().eq('id', id);
+
+    await supabase.from('albums').update(updateData).eq('id', albumId);
   }
 
-  Future<String> uploadAlbumCover(File file) async {
-    final fileName =
-        '${DateTime.now().millisecondsSinceEpoch}_${p.basename(file.path)}';
-    final extension = p.extension(file.path).toLowerCase();
-    String contentType;
-    if (extension == '.jpg' || extension == '.jpeg') {
-      contentType = 'image/jpeg';
-    } else if (extension == '.png') {
-      contentType = 'image/png';
-    } else if (extension == '.gif') {
-      contentType = 'image/gif';
-    } else {
-      contentType = 'image/jpeg'; // default
-    }
-    await supabase.storage
-        .from('album_covers')
-        .uploadBinary(
-          fileName,
-          await file.readAsBytes(),
-          fileOptions: FileOptions(upsert: true, contentType: contentType),
-        );
-    return fileName;
+  // Delete album
+  Future<void> deleteAlbum(String albumId) async {
+    await supabase.from('albums').delete().eq('id', albumId);
   }
 
-  // -------------------- SONGS --------------------
-  Future<List<Song>> getSongsWithDetails() async {
-    final res = await supabase.from('songs').select().order('name');
+  // Get albums by artist
+  Future<List<Album>> getAlbumsByArtist(String artistId) async {
+    final data = await supabase
+        .from('albums')
+        .select()
+        .eq('artist_id', artistId);
+    return List<Map<String, dynamic>>.from(
+      data,
+    ).map((e) => Album.fromMap(e, supabase: supabase)).toList();
+  }
+
+  // ===================== GET PUBLIC URL FOR IMAGE =====================
+  String getPublicUrl(String bucket, String path) {
+    return supabase.storage.from(bucket).getPublicUrl(path);
+  }
+
+  Future<List<Song>> getSongs() async {
+    final res = await supabase.from('songs').select();
     final data = List<Map<String, dynamic>>.from(res);
+    return data
+        .map(
+          (e) => Song.fromMap(
+            e,
+            storageUrl: supabase.storage.from('song_audio').getPublicUrl(''),
+          ),
+        )
+        .toList();
+  }
 
+  Future<List<Song>> getSongsWithDetails() async {
+    final res = await supabase.from('songs').select();
+    final data = List<Map<String, dynamic>>.from(res);
     final albumMap = await getAlbumCoverMap();
     final artistMap = Map<String, String>.fromEntries(
       (await supabase.from('artists').select()).map(
         (e) => MapEntry(e['id'].toString(), e['name'].toString()),
       ),
     );
-
     return data.map((e) {
       final audioUrl = getStorageUrl(e['audio_url'] as String?, 'song_audio');
-
       final albumId = e['album_id']?.toString() ?? '';
       final albumImage = albumId.isNotEmpty ? albumMap[albumId] : null;
-
       final artistId = e['artist_id']?.toString();
       final artistName = artistId != null ? artistMap[artistId] : null;
-
       return Song(
         id: e['id'].toString(),
         name: e['name'] ?? '',
         artistId: artistId ?? '',
         albumId: albumId,
         audioUrl: audioUrl,
-        artistName: artistName,
         albumImage: albumImage,
+        artistName: artistName,
       );
     }).toList();
   }
@@ -459,19 +358,25 @@ class DatabaseService {
         .toList();
   }
 
-  Future<void> addSong({
+  Future<String> addSong({
     required String name,
     required String artistId,
     required String albumId,
     required String audioUrl,
   }) async {
     await supabase.from('songs').insert({
-      'id': uuid.v4(),
       'name': name,
       'artist_id': artistId,
       'album_id': albumId,
       'audio_url': audioUrl,
     });
+    // Get the generated id
+    final inserted = await supabase
+        .from('songs')
+        .select('id')
+        .eq('name', name)
+        .single();
+    return inserted['id'] as String;
   }
 
   Future<void> updateSong({

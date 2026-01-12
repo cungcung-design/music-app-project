@@ -238,23 +238,31 @@ class _SuggestedTabState extends State<SuggestedTab> {
                 CircleAvatar(
                   radius: 40,
                   backgroundColor: Colors.grey[700],
-                  child:
-                      artist.artistProfileUrl != null &&
-                          artist.artistProfileUrl!.isNotEmpty
-                      ? ClipOval(
-                          child: Image.network(
-                            artist.artistProfileUrl!,
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              Icons.person,
-                              color: Colors.white,
-                              size: 40,
+                  child: () {
+                    final imageUrl = widget.db.getStorageUrl(
+                      artist.artistProfilePath,
+                      'artist_profiles',
+                    );
+                    return imageUrl != null
+                        ? ClipOval(
+                            child: Image.network(
+                              imageUrl,
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: 40,
+                              ),
                             ),
-                          ),
-                        )
-                      : const Icon(Icons.person, color: Colors.white, size: 40),
+                          )
+                        : const Icon(
+                            Icons.person,
+                            color: Colors.white,
+                            size: 40,
+                          );
+                  }(),
                 ),
                 const SizedBox(height: 8),
                 SizedBox(
@@ -397,20 +405,24 @@ class ArtistsTab extends StatelessWidget {
               leading: CircleAvatar(
                 radius: 24,
                 backgroundColor: Colors.grey[700],
-                child:
-                    artist.artistProfileUrl != null &&
-                        artist.artistProfileUrl!.isNotEmpty
-                    ? ClipOval(
-                        child: Image.network(
-                          artist.artistProfileUrl!,
-                          width: 48,
-                          height: 48,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              const Icon(Icons.person, color: Colors.white),
-                        ),
-                      )
-                    : const Icon(Icons.person, color: Colors.white),
+                child: () {
+                  final imageUrl = db.getStorageUrl(
+                    artist.artistProfilePath,
+                    'artist_profiles',
+                  );
+                  return imageUrl != null
+                      ? ClipOval(
+                          child: Image.network(
+                            imageUrl,
+                            width: 48,
+                            height: 48,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                const Icon(Icons.person, color: Colors.white),
+                          ),
+                        )
+                      : const Icon(Icons.person, color: Colors.white);
+                }(),
               ),
               title: Text(
                 artist.name,

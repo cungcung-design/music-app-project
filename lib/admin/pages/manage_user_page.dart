@@ -4,8 +4,27 @@ import '../../models/profile.dart';
 import 'user_detail_page.dart';
 import '../../utils/toast.dart';
 
-class ManageUsersPage extends StatelessWidget {
+class ManageUsersPage extends StatefulWidget {
   const ManageUsersPage({super.key});
+
+  @override
+  State<ManageUsersPage> createState() => _ManageUsersPageState();
+}
+
+class _ManageUsersPageState extends State<ManageUsersPage> {
+  late Future<List<Profile>> _usersFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _usersFuture = DatabaseService().getAllUsers();
+  }
+
+  void _refreshUsers() {
+    setState(() {
+      _usersFuture = DatabaseService().getAllUsers();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,19 +118,18 @@ class ManageUsersPage extends StatelessWidget {
                           try {
                             await db.deleteUser(user.id);
                             showToast(context, 'User deleted successfully');
-                            // Force rebuild
-                            (context as Element).reassemble();
+                            _refreshUsers();
                           } catch (e) {
-                            showToast(context, 'Failed to delete user: $e',
-                                isError: true);
+                            showToast(
+                              context,
+                              'Failed to delete user: $e',
+                              isError: true,
+                            );
                           }
                         }
                       },
                       itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: Text('Edit'),
-                        ),
+                        const PopupMenuItem(value: 'edit', child: Text('Edit')),
                         const PopupMenuItem(
                           value: 'delete',
                           child: Text('Delete'),

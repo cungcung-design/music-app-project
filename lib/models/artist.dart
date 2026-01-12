@@ -1,10 +1,12 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 class Artist {
   final String id;
   final String name;
   final String? about;
   final String bio;
   final String? artistProfilePath; // file name in Supabase
-  String? artistProfileUrl;        // public URL
+  String? artistProfileUrl; // public URL
 
   Artist({
     required this.id,
@@ -15,19 +17,23 @@ class Artist {
     this.artistProfileUrl,
   });
 
-  factory Artist.fromMap(Map<String, dynamic> map) {
+  factory Artist.fromMap(Map<String, dynamic> map, {SupabaseClient? supabase}) {
     final path = map['artist_url'] as String?;
-    final fullUrl = path != null
-        ? 'https://YOUR_SUPABASE_URL.supabase.co/storage/v1/object/public/artist_profiles/$path'
-        : null;
-
+    String? url;
+    if (path != null && supabase != null) {
+      if (path.startsWith('http')) {
+        url = path;
+      } else {
+        url = supabase.storage.from('artist_profiles').getPublicUrl(path);
+      }
+    }
     return Artist(
       id: map['id'].toString(),
       name: map['name'] ?? '',
       bio: map['bio'] ?? '',
       about: map['about'],
       artistProfilePath: path,
-      artistProfileUrl: fullUrl,
+      artistProfileUrl: url,
     );
   }
 

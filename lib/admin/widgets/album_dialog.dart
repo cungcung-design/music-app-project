@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../services/database_service.dart';
 import '../../models/album.dart';
 import '../../models/artist.dart';
@@ -21,6 +23,8 @@ class _AlbumDialogState extends State<AlbumDialog> {
   List<Artist> artists = [];
   bool isLoading = true;
   String? selectedArtistId;
+  File? selectedCoverFile;
+  String? selectedFileName;
 
   @override
   void initState() {
@@ -45,6 +49,20 @@ class _AlbumDialogState extends State<AlbumDialog> {
         isLoading = false;
       });
       // Handle error, maybe show a snackbar
+    }
+  }
+
+  Future<void> _pickCover() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+
+    if (result != null && result.files.single.path != null) {
+      setState(() {
+        selectedCoverFile = File(result.files.single.path!);
+        selectedFileName = result.files.single.name;
+      });
     }
   }
 
@@ -108,14 +126,10 @@ class _AlbumDialogState extends State<AlbumDialog> {
                   validator: (val) => val == null ? "Select an artist" : null,
                 ),
                 const SizedBox(height: 12),
-    const SizedBox(height: 12),
-                TextFormField(
-                  controller: albumProfileUrlController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    hintText: 'Album Profile Path',
-                    hintStyle: TextStyle(color: Colors.grey),
-                  ),
+                ElevatedButton.icon(
+                  onPressed: _pickCover,
+                  icon: const Icon(Icons.image),
+                  label: const Text("Pick Album Cover (Optional)"),
                 ),
               ],
             ),
@@ -135,14 +149,14 @@ class _AlbumDialogState extends State<AlbumDialog> {
                 await widget.db.addAlbum(
                   name: nameController.text,
                   artistId: selectedArtistId!,
-                  albumProfilePath: albumProfileUrlController.text,
+                  coverFile: selectedCoverFile,
                 );
               } else {
                 await widget.db.updateAlbum(
-                  id: widget.album!.id,
+                  albumId: widget.album!.id,
                   name: nameController.text,
                   artistId: selectedArtistId!,
-                  albumProfilePath: albumProfileUrlController.text,
+                  newCoverFile: selectedCoverFile,
                 );
               }
               Navigator.pop(context, true);
