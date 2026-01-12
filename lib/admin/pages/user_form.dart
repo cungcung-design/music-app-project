@@ -4,16 +4,17 @@ import 'package:image_picker/image_picker.dart';
 import '../../models/profile.dart';
 import '../../services/database_service.dart';
 import '../../utils/toast.dart';
+import 'package:uuid/uuid.dart';
 
-class UserDetailPage extends StatefulWidget {
-  final Profile user;
-  const UserDetailPage({super.key, required this.user});
+class UserFormPage extends StatefulWidget {
+  final Profile? user; // null = Add User, not null = Edit User
+  const UserFormPage({super.key, this.user});
 
   @override
-  State<UserDetailPage> createState() => _UserDetailPageState();
+  State<UserFormPage> createState() => _UserFormPageState();
 }
 
-class _UserDetailPageState extends State<UserDetailPage> {
+class _UserFormPageState extends State<UserFormPage> {
   final DatabaseService db = DatabaseService();
   final _formKey = GlobalKey<FormState>();
 
@@ -25,13 +26,15 @@ class _UserDetailPageState extends State<UserDetailPage> {
   File? _selectedImage;
   bool _isLoading = false;
 
+  bool get isEdit => widget.user != null;
+
   @override
   void initState() {
     super.initState();
-    nameController = TextEditingController(text: widget.user.name);
-    emailController = TextEditingController(text: widget.user.email);
-    countryController = TextEditingController(text: widget.user.country ?? '');
-    dobController = TextEditingController(text: widget.user.dob ?? '');
+    nameController = TextEditingController(text: widget.user?.name ?? '');
+    emailController = TextEditingController(text: widget.user?.email ?? '');
+    countryController = TextEditingController(text: widget.user?.country ?? '');
+    dobController = TextEditingController(text: widget.user?.dob ?? '');
   }
 
   Future<void> _pickImage() async {
@@ -42,7 +45,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
     }
   }
 
-  Future<void> _updateUser() async {
+  Future<void> _saveUser() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
@@ -51,18 +54,31 @@ class _UserDetailPageState extends State<UserDetailPage> {
       String? avatarPath;
 
       if (_selectedImage != null) {
-        avatarPath = await db.uploadAvatar(_selectedImage!, widget.user.id);
+        // If editing, use existing user id, otherwise generate new
+        final userId = isEdit ? widget.user!.id : const Uuid().v4();
+        avatarPath = await db.uploadAvatar(_selectedImage!, userId);
       }
 
-      await db.updateProfile(
-        userId: widget.user.id,
-        name: nameController.text.trim(),
-        dob: dobController.text.trim(),
-        country: countryController.text.trim(),
-        avatarPath: avatarPath,
-      );
+      if (isEdit) {
+        await db.updateProfile(
+          userId: widget.user!.id,
+          name: nameController.text.trim(),
+          dob: dobController.text.trim(),
+          country: countryController.text.trim(),
+          avatarPath: avatarPath,
+        );
+        showToast(context, 'User updated successfully');
+      } else {
+        await db.addUser(
+          name: nameController.text.trim(),
+          email: emailController.text.trim(),
+          country: countryController.text.trim(),
+          avatarPath: avatarPath,
+        );
+        showToast(context, 'User added successfully');
+      }
 
-      showToast(context, 'User updated successfully');
+      if (!mounted) return;
       Navigator.pop(context, true);
     } catch (e) {
       showToast(context, e.toString(), isError: true);
@@ -76,7 +92,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Edit User'),
+        title: Text(isEdit ? 'Edit User' : 'Add User'),
         backgroundColor: Colors.black,
       ),
       body: Padding(
@@ -93,27 +109,50 @@ class _UserDetailPageState extends State<UserDetailPage> {
                   backgroundColor: Colors.green,
                   backgroundImage: _selectedImage != null
                       ? FileImage(_selectedImage!)
-                      : (widget.user.avatarUrl != null
-                          ? NetworkImage(widget.user.avatarUrl!) as ImageProvider
-                          : null),
-                  child: _selectedImage == null && widget.user.avatarUrl == null
-                      ? const Icon(Icons.camera_alt, color: Colors.black, size: 50)
+                      : (widget.user?.avatarUrl != null
+                            ? NetworkImage(widget.user!.avatarUrl!)
+                                  as ImageProvider
+                            : null),
+                  child:
+                      _selectedImage == null && widget.user?.avatarUrl == null
+                      ? const Icon(
+                          Icons.camera_alt,
+                          color: Colors.black,
+                          size: 50,
+                        )
                       : null,
                 ),
               ),
               const SizedBox(height: 16),
 
-              _buildField(controller: nameController, label: 'Name', icon: Icons.person),
+              _buildField(
+                controller: nameController,
+                label: 'Name',
+                icon: Icons.person,
+              ),
               const SizedBox(height: 12),
-              _buildField(controller: emailController, label: 'Email', icon: Icons.email, enabled: false),
+              _buildField(
+                controller: emailController,
+                label: 'Email',
+                icon: Icons.email,
+                enabled: !isEdit,
+              ), // Email cannot be edited
               const SizedBox(height: 12),
-              _buildField(controller: countryController, label: 'Country', icon: Icons.public),
+              _buildField(
+                controller: countryController,
+                label: 'Country',
+                icon: Icons.public,
+              ),
               const SizedBox(height: 12),
-              _buildField(controller: dobController, label: 'Date of Birth', icon: Icons.cake),
+              _buildField(
+                controller: dobController,
+                label: 'Date of Birth',
+                icon: Icons.cake,
+              ),
               const SizedBox(height: 24),
 
               ElevatedButton(
-                onPressed: _isLoading ? null : _updateUser,
+                onPressed: _isLoading ? null : _saveUser,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   foregroundColor: Colors.black,
@@ -121,7 +160,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
                 ),
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.black)
-                    : const Text('Save Changes'),
+                    : Text(isEdit ? 'Update User' : 'Add User'),
               ),
             ],
           ),

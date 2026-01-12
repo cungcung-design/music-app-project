@@ -122,10 +122,24 @@ class DatabaseService {
   // -------------------------------
   // UPLOAD AVATAR (OPTIONAL)
   // -------------------------------
-  Future<String> uploadAvatar(File file, String userId) async {
+  Future<String> uploadAvatar(
+    File file,
+    String userId, {
+    String? oldPath,
+  }) async {
     final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
     final path = 'user_avatars/$userId/$fileName';
 
+    // 1️⃣ Remove old avatar if exists
+    if (oldPath != null && oldPath.isNotEmpty) {
+      try {
+        await supabase.storage.from('profiles').remove([oldPath]);
+      } catch (e) {
+        print('Failed to delete old avatar: $e'); // optional: just log error
+      }
+    }
+
+    // 2️⃣ Upload new avatar
     await supabase.storage
         .from('profiles')
         .upload(
@@ -137,7 +151,7 @@ class DatabaseService {
           ),
         );
 
-    return path; // store path in avatar_url column
+    return path; // return new path
   }
 
   // -------------------------------
@@ -162,22 +176,29 @@ class DatabaseService {
   // GET ALL USERS
   // -------------------------------
   Future<List<Profile>> getAllUsers() async {
-    final data = await supabase.from('profiles').select().order('name');
+    final res = await supabase.from('profiles').select().order('name');
+    final data = List<Map<String, dynamic>>.from(res);
 
-    return data
-        .map(
-          (e) => Profile.fromMap(e as Map<String, dynamic>, supabase: supabase),
-        )
-        .toList();
+    return data.map((e) {
+      try {
+        return Profile.fromMap(e, supabase: supabase);
+      } catch (_) {
+        return Profile(
+          id: e['id'] ?? '',
+          name: e['name'] ?? 'Unknown',
+          email: e['email'] ?? '',
+        );
+      }
+    }).toList();
   }
 
-  // -------------------------------
   // ADD USER
   // -------------------------------
   Future<void> addUser({
     required String name,
     required String email,
     String? country,
+    String? avatarPath,
   }) async {
     final id = const Uuid().v4();
 
@@ -186,6 +207,7 @@ class DatabaseService {
       'name': name,
       'email': email,
       if (country != null) 'country': country,
+      if (avatarPath != null) 'avatar_url': avatarPath,
     });
   }
 

@@ -42,9 +42,15 @@ class Profile {
   }) {
     final path = map['avatar_url'] as String?;
     String? url;
-    if (path != null && supabase != null) {
-      url = resolveUrl(supabase: supabase, bucket: 'profiles', value: path);
+
+    if (path != null && path.isNotEmpty && supabase != null) {
+      try {
+        url = resolveUrl(supabase: supabase, bucket: 'profiles', value: path);
+      } catch (_) {
+        url = null; // If file missing or invalid, fallback to null
+      }
     }
+
     return Profile(
       id: map['id'] ?? '',
       email: map['email'] ?? '',
@@ -54,17 +60,5 @@ class Profile {
       dob: map['dob'],
       country: map['country'],
     );
-  }
-
-  /// Convert Profile object to Map for insert/update
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'email': email,
-      'name': name,
-      'avatar_url': avatarPath, // store DB path
-      if (dob != null) 'dob': dob,
-      if (country != null) 'country': country,
-    };
   }
 }

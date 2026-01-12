@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import './home_page.dart';
+import 'auth/login_page.dart';
+import 'auth/signup_page.dart';
 
 import 'admin/pages/admin_home.dart';
 import 'services/database_service.dart';
