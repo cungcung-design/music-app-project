@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import "package:supabase_flutter/supabase_flutter.dart";
-import 'auth/login_page.dart';
-import "admin/pages/admin_home.dart";
-import"home_page.dart";
+import 'package:supabase_flutter/supabase_flutter.dart';
+import './home_page.dart';
+
+import 'admin/pages/admin_home.dart';
+import 'services/database_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,14 +18,46 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final DatabaseService db = DatabaseService();
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initApp();
+  }
+
+  Future<void> _initApp() async {
+    // Optional delay (safe Supabase init)
+    await Future.delayed(const Duration(milliseconds: 500));
+    setState(() => _isLoading = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          backgroundColor: Colors.black,
+          body: Center(
+            child: CircularProgressIndicator(color: Colors.green),
+          ),
+        ),
+      );
+    }
+
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: AdminHomePage()    
-      );
+      home: UserHomePage(), // ✅ DIRECT ADMIN ACCESS
+    );
   }
 }

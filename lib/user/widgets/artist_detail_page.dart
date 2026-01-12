@@ -55,27 +55,21 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                       CircleAvatar(
                         radius: 50,
                         backgroundColor: Colors.grey[700],
-                        child: widget.artist.artistProfileUrl != null
-                            ? ClipOval(
-                                child: Image.network(
-                                  widget.artist.artistProfileUrl!,
-                                  fit: BoxFit.cover,
-                                  width: 100,
-                                  height: 100,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(
-                                      Icons.person,
-                                      color: Colors.white,
-                                      size: 50,
-                                    );
-                                  },
-                                ),
-                              )
-                            : const Icon(
+                        child: ClipOval(
+                          child: Image.network(
+                            widget.artist.artistProfileUrl ?? '',
+                            fit: BoxFit.cover,
+                            width: 100,
+                            height: 100,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
                                 Icons.person,
                                 color: Colors.white,
                                 size: 50,
-                              ),
+                              );
+                            },
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -163,20 +157,19 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                                     color: Colors.grey[700],
                                     borderRadius: BorderRadius.circular(6),
                                   ),
-                                  child: song.albumImage != null
-                                      ? ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            6,
-                                          ),
-                                          child: Image.network(
-                                            song.albumImage!,
-                                            fit: BoxFit.cover,
-                                          ),
-                                        )
-                                      : const Icon(
-                                          Icons.music_note,
-                                          color: Colors.white,
-                                        ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Image.network(
+                                      song.albumImage ?? '',
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              const Icon(
+                                                Icons.music_note,
+                                                color: Colors.white,
+                                              ),
+                                    ),
+                                  ),
                                 ),
                                 title: Text(
                                   song.name,

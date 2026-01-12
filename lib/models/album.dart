@@ -4,33 +4,46 @@ class Album {
   final String id;
   final String name;
   final String artistId;
-  final String? albumProfilePath;
-  String? albumProfileUrl;
+  final String? albumProfileUrl;
+
   Album({
     required this.id,
     required this.name,
     required this.artistId,
-    this.albumProfilePath,
     this.albumProfileUrl,
   });
 
-  factory Album.fromMap(Map<String, dynamic> map, {SupabaseClient? supabase}) {
-    final path = map['album_url'] as String?;
-    String? url;
-    if (path != null && supabase != null) {
-      // If the path is already a full URL, use it directly
-      if (path.startsWith('http')) {
-        url = path;
-      } else {
-        url = supabase.storage.from('album_covers').getPublicUrl(path);
-      }
+  static String? resolveUrl({
+    required SupabaseClient supabase,
+    required String bucket,
+    String? value,
+  }) {
+    if (value == null || value.isEmpty) return null;
+
+    // already a full URL
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
     }
+
+    // storage path
+    return supabase.storage.from(bucket).getPublicUrl(value);
+  }
+
+  factory Album.fromMap(
+    Map<String, dynamic> map, {
+    required SupabaseClient supabase,
+  }) {
+    final raw = map['album_url'] as String?;
+    String? url;
+    if (raw != null && raw.isNotEmpty) {
+      url = resolveUrl(supabase: supabase, bucket: 'album_covers', value: raw);
+    }
+
     return Album(
       id: map['id'].toString(),
       name: map['name'] ?? '',
-      artistId: map['artist_id']?.toString() ?? '',
-      albumProfilePath: path, // store DB path
-      albumProfileUrl: url, // full URL for UI
+      artistId: map['artist_id'].toString(),
+      albumProfileUrl: url,
     );
   }
 
@@ -39,7 +52,7 @@ class Album {
       'id': id,
       'name': name,
       'artist_id': artistId,
-      'album_url': albumProfilePath, // must match DB column
+      'album_url': albumProfileUrl,
     };
   }
 }

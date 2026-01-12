@@ -39,15 +39,15 @@ class RecentlyPlayedSection extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                         color: Colors.grey[800],
                       ),
-                      child: song.albumImage != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                song.albumImage!,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                          : const Icon(Icons.music_note, color: Colors.white),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          song.albumImage ?? '',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.music_note, color: Colors.white),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     SizedBox(

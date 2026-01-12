@@ -23,6 +23,7 @@ class _ArtistDialogState extends State<ArtistDialog> {
 
   Uint8List? selectedImageBytes;
   String? selectedFileName;
+  String? contentType;
 
   @override
   void initState() {
@@ -59,9 +60,22 @@ class _ArtistDialogState extends State<ArtistDialog> {
     );
 
     if (result != null && result.files.single.bytes != null) {
+      final fileName = result.files.single.name;
+      String? detectedContentType;
+      if (fileName != null) {
+        final extension = fileName.split('.').last.toLowerCase();
+        if (extension == 'jpg' || extension == 'jpeg') {
+          detectedContentType = 'image/jpeg';
+        } else if (extension == 'png') {
+          detectedContentType = 'image/png';
+        } else {
+          detectedContentType = 'image/png'; // default
+        }
+      }
       setState(() {
         selectedImageBytes = result.files.single.bytes;
-        selectedFileName = result.files.single.name;
+        selectedFileName = fileName;
+        contentType = detectedContentType;
       });
     }
   }
@@ -176,6 +190,7 @@ class _ArtistDialogState extends State<ArtistDialog> {
                     bio: bioController.text,
                     about: aboutController.text,
                     imageBytes: selectedImageBytes,
+                    contentType: contentType,
                   );
                 } else {
                   await widget.db.updateArtist(
@@ -184,6 +199,7 @@ class _ArtistDialogState extends State<ArtistDialog> {
                     bio: bioController.text,
                     about: aboutController.text,
                     newImageBytes: selectedImageBytes,
+                    contentType: contentType,
                   );
                 }
                 Navigator.pop(context, true);

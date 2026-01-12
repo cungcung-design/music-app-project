@@ -48,6 +48,12 @@ class _ManageArtistsPageState extends State<ManageArtistsPage> {
       appBar: AppBar(
         title: const Text('Manage Artists'),
         backgroundColor: Colors.black,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => setState(() => _loadArtists()),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.green,
@@ -141,15 +147,17 @@ class _ManageArtistsPageState extends State<ManageArtistsPage> {
                         return Column(
                           children: albums.map((album) {
                             return ListTile(
-                              leading: album.albumProfileUrl != null
-                                  ? Image.network(
-                                      album.albumProfileUrl!,
-                                      width: 40,
-                                      height: 40,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : const Icon(Icons.album,
-                                      color: Colors.green),
+                              leading: Image.network(
+                                album.albumProfileUrl ?? '',
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(
+                                      Icons.album,
+                                      color: Colors.green,
+                                    ),
+                              ),
                               title: Text(
                                 album.name,
                                 style: const TextStyle(color: Colors.white),

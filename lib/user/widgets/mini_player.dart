@@ -55,12 +55,15 @@ class _MiniPlayerState extends State<MiniPlayer> {
               color: Colors.grey[700],
               borderRadius: BorderRadius.circular(6),
             ),
-            child: song.albumImage != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: Image.network(song.albumImage!, fit: BoxFit.cover),
-                  )
-                : const Icon(Icons.music_note, color: Colors.white),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.network(
+                song.albumImage ?? '',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.music_note, color: Colors.white),
+              ),
+            ),
           ),
           const SizedBox(width: 12),
 
@@ -74,7 +77,10 @@ class _MiniPlayerState extends State<MiniPlayer> {
                   song.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 Text(
                   "${_formatDuration(service.position)} / ${_formatDuration(service.duration)}",
@@ -84,7 +90,9 @@ class _MiniPlayerState extends State<MiniPlayer> {
                 LinearProgressIndicator(
                   value: progress.clamp(0.0, 1.0),
                   backgroundColor: Colors.grey[800],
-                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.greenAccent),
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    Colors.greenAccent,
+                  ),
                   minHeight: 3,
                 ),
               ],
@@ -93,13 +101,20 @@ class _MiniPlayerState extends State<MiniPlayer> {
 
           // Play/Pause Button
           IconButton(
-            icon: Icon(service.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
-            onPressed: () => service.isPlaying ? service.pause() : service.resume(),
+            icon: Icon(
+              service.isPlaying ? Icons.pause : Icons.play_arrow,
+              color: Colors.white,
+            ),
+            onPressed: () =>
+                service.isPlaying ? service.pause() : service.resume(),
           ),
 
           // CLOSE BUTTON
           IconButton(
-            icon: const Icon(Icons.close, color: Color.fromARGB(255, 157, 44, 44)),
+            icon: const Icon(
+              Icons.close,
+              color: Color.fromARGB(255, 157, 44, 44),
+            ),
             onPressed: () {
               // Calls your new method to stop audio and hide this UI
               service.stopAndClear();

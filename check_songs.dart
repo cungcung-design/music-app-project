@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'lib/services/database_service.dart';
 
 void main() async {
   // Initialize Supabase
@@ -8,22 +9,24 @@ void main() async {
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zdW9jYXl5bnBybHFsbWJzcW9wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1MzI0MzMsImV4cCI6MjA4MzEwODQzM30.92RSKN2IrQveJJ7FCZmR6Vw3uWoWcEadGv1Kp5ZW6Wg',
   );
 
-  print('Checking songs in database...');
-  try {
-    final supabase = Supabase.instance.client;
-    final response = await supabase.from('songs').select().order('name');
+  final dbService = DatabaseService();
 
-    if (response.isEmpty) {
-      print('No songs found in database.');
+  print('Fetching orphaned songs from storage...');
+  try {
+    final orphanedSongs = await dbService.getOrphanedSongs();
+    print('Found ${orphanedSongs.length} orphaned songs:');
+    for (var song in orphanedSongs) {
+      print('- $song');
+    }
+
+    if (orphanedSongs.isNotEmpty) {
+      print('\nAdding orphaned songs to the database...');
+      await dbService.addOrphanedSongsToTable();
+      print('Orphaned songs added successfully.');
     } else {
-      print('Found ${response.length} songs:');
-      for (var song in response) {
-        print(
-          '- ${song['name']} (ID: ${song['id']}, Artist ID: ${song['artist_id']}, Album ID: ${song['album_id']}, Audio URL: ${song['audio_url']})',
-        );
-      }
+      print('No orphaned songs to add.');
     }
   } catch (e) {
-    print('Error checking songs: $e');
+    print('Error: $e');
   }
 }

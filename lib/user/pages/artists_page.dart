@@ -55,7 +55,10 @@ class ArtistsPage extends StatelessWidget {
                 child: artist.artistProfileUrl != null
                     ? ClipOval(
                         child: Image.network(
-                          artist.artistProfileUrl!,
+                          DatabaseService.resolveImageUrl(
+                            artist.artistProfileUrl,
+                            'artist_profiles',
+                          )!,
                           fit: BoxFit.cover,
                           width: 48,
                           height: 48,

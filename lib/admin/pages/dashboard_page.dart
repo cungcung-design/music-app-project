@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../services/database_service.dart';
-import '../../services/database_seeder.dart';
 import '../../utils/toast.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -11,21 +10,6 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  bool isSeeding = false;
-
-  Future<void> _runSeeding() async {
-    setState(() => isSeeding = true);
-    try {
-      await seedDatabase();
-      showToast(context, "Database seeded successfully");
-      setState(() {}); // refresh dashboard
-    } catch (e) {
-      showToast(context, "Seeding failed: $e", isError: true);
-    } finally {
-      setState(() => isSeeding = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final db = DatabaseService();
@@ -76,29 +60,26 @@ class _DashboardPageState extends State<DashboardPage> {
             return Column(
               children: [
                 _dashboardCard(
-                    icon: Icons.music_note,
-                    label: 'Total Songs',
-                    value: songs.length),
-                _dashboardCard(
-                    icon: Icons.person,
-                    label: 'Total Artists',
-                    value: artists.length),
-                _dashboardCard(
-                    icon: Icons.album,
-                    label: 'Total Albums',
-                    value: albums.length),
-                _dashboardCard(
-                    icon: Icons.people,
-                    label: 'Total Users',
-                    value: users.length),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                  ),
-                  onPressed: isSeeding ? null : _runSeeding,
-                  child: Text(isSeeding ? 'Seeding...' : 'Seed Database'),
+                  icon: Icons.music_note,
+                  label: 'Total Songs',
+                  value: songs.length,
                 ),
+                _dashboardCard(
+                  icon: Icons.person,
+                  label: 'Total Artists',
+                  value: artists.length,
+                ),
+                _dashboardCard(
+                  icon: Icons.album,
+                  label: 'Total Albums',
+                  value: albums.length,
+                ),
+                _dashboardCard(
+                  icon: Icons.people,
+                  label: 'Total Users',
+                  value: users.length,
+                ),
+                
               ],
             );
           },
@@ -107,17 +88,17 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _dashboardCard(
-      {required IconData icon, required String label, required int value}) {
+  Widget _dashboardCard({
+    required IconData icon,
+    required String label,
+    required int value,
+  }) {
     return Card(
       color: Colors.grey[850],
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: ListTile(
         leading: Icon(icon, color: Colors.green),
-        title: Text(
-          label,
-          style: const TextStyle(color: Colors.white),
-        ),
+        title: Text(label, style: const TextStyle(color: Colors.white)),
         trailing: Text(
           value.toString(),
           style: const TextStyle(color: Colors.white),

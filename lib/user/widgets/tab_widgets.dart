@@ -164,7 +164,7 @@ class _SuggestedTabState extends State<SuggestedTab> {
                         ? ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: Image.network(
-                              song.albumImage!,
+                              song.albumImage ?? '',
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => const Icon(
                                 Icons.music_note,
@@ -337,9 +337,12 @@ class SongsTab extends StatelessWidget {
                 width: 48,
                 height: 48,
                 color: Colors.grey[700],
-                child: song.albumImage != null && song.albumImage!.isNotEmpty
-                    ? Image.network(song.albumImage!, fit: BoxFit.cover)
-                    : const Icon(Icons.music_note, color: Colors.white),
+                child: Image.network(
+                  song.albumImage ?? '',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.music_note, color: Colors.white),
+                ),
               ),
               title: Text(
                 song.name,

@@ -17,15 +17,31 @@ class Artist {
     this.artistProfileUrl,
   });
 
+  static String? resolveUrl({
+    required SupabaseClient supabase,
+    required String bucket,
+    String? value,
+  }) {
+    if (value == null || value.isEmpty) return null;
+
+    // already a full URL
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
+    }
+
+    // storage path
+    return supabase.storage.from(bucket).getPublicUrl(value);
+  }
+
   factory Artist.fromMap(Map<String, dynamic> map, {SupabaseClient? supabase}) {
     final path = map['artist_url'] as String?;
     String? url;
     if (path != null && supabase != null) {
-      if (path.startsWith('http')) {
-        url = path;
-      } else {
-        url = supabase.storage.from('artist_profiles').getPublicUrl(path);
-      }
+      url = resolveUrl(
+        supabase: supabase,
+        bucket: 'artist_profiles',
+        value: path,
+      );
     }
     return Artist(
       id: map['id'].toString(),

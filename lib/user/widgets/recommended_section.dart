@@ -58,13 +58,16 @@ class RecommendedSection extends StatelessWidget {
                         child: SizedBox(
                           height: 120,
                           width: double.infinity,
-                          child: song.albumImage != null
-                              ? Image.network(
-                                  song.albumImage!,
-                                  fit: BoxFit.cover,
-                                )
-                              : const Icon(Icons.music_note,
-                                  color: Colors.white, size: 40),
+                          child: Image.network(
+                            song.albumImage ?? '',
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(
+                                  Icons.music_note,
+                                  color: Colors.white,
+                                  size: 40,
+                                ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -82,7 +85,10 @@ class RecommendedSection extends StatelessWidget {
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         child: Text(
                           song.artistName ?? "",
                           style: const TextStyle(

@@ -1,8 +1,11 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 class Profile {
   final String id; // User ID (from Supabase Auth)
   final String email; // User email
   final String name; // User name
-  final String? avatarUrl; // Optional avatar image URL
+  final String? avatarPath; // file name in Supabase
+  String? avatarUrl; // public URL
   final String? dob; // Optional date of birth
   final String? country; // Optional country
 
@@ -10,18 +13,44 @@ class Profile {
     required this.id,
     required this.email,
     required this.name,
+    this.avatarPath,
     this.avatarUrl,
     this.dob,
     this.country,
   });
 
+  static String? resolveUrl({
+    required SupabaseClient supabase,
+    required String bucket,
+    String? value,
+  }) {
+    if (value == null || value.isEmpty) return null;
+
+    // already a full URL
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
+    }
+
+    // storage path
+    return supabase.storage.from(bucket).getPublicUrl(value);
+  }
+
   /// Convert from Supabase row (Map) to Profile object
-  factory Profile.fromMap(Map<String, dynamic> map) {
+  factory Profile.fromMap(
+    Map<String, dynamic> map, {
+    SupabaseClient? supabase,
+  }) {
+    final path = map['avatar_url'] as String?;
+    String? url;
+    if (path != null && supabase != null) {
+      url = resolveUrl(supabase: supabase, bucket: 'profiles', value: path);
+    }
     return Profile(
       id: map['id'] ?? '',
       email: map['email'] ?? '',
       name: map['name'] ?? '',
-      avatarUrl: map['avatar_url'],
+      avatarPath: path,
+      avatarUrl: url,
       dob: map['dob'],
       country: map['country'],
     );
@@ -33,7 +62,7 @@ class Profile {
       'id': id,
       'email': email,
       'name': name,
-      if (avatarUrl != null) 'avatar_url': avatarUrl,
+      'avatar_url': avatarPath, // store DB path
       if (dob != null) 'dob': dob,
       if (country != null) 'country': country,
     };

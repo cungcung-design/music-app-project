@@ -282,7 +282,7 @@ class _ManageSongsPageState extends State<ManageSongsPage> {
         showToast(context, "Song updated ");
       }
 
-      loadAll();
+      await loadAll();
     } catch (e) {
       showToast(context, "Operation failed: $e", isError: true);
     }
@@ -296,6 +296,13 @@ class _ManageSongsPageState extends State<ManageSongsPage> {
       );
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Manage Songs'),
+        backgroundColor: Colors.black,
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: loadAll),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.green,
         onPressed: () => showSongForm(),
@@ -317,7 +324,6 @@ class _ManageSongsPageState extends State<ManageSongsPage> {
               id: '',
               name: 'Unknown',
               artistId: '',
-              albumProfilePath: '',
               albumProfileUrl: '',
             ),
           );
@@ -339,26 +345,13 @@ class _ManageSongsPageState extends State<ManageSongsPage> {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child:
-                            artist.artistProfileUrl != null &&
-                                artist.artistProfileUrl!.isNotEmpty
-                            ? Image.network(
-                                artist.artistProfileUrl!,
-                                width: 50,
-                                height: 50,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    Container(
-                                      width: 50,
-                                      height: 50,
-                                      color: Colors.grey[700],
-                                      child: const Icon(
-                                        Icons.person,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                              )
-                            : Container(
+                        child: Image.network(
+                          artist.artistProfileUrl ?? '',
+                          width: 50,
+                          height: 50,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
                                 width: 50,
                                 height: 50,
                                 color: Colors.grey[700],
@@ -367,6 +360,7 @@ class _ManageSongsPageState extends State<ManageSongsPage> {
                                   color: Colors.white,
                                 ),
                               ),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(

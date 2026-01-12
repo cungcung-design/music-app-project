@@ -59,16 +59,19 @@ class RecentlyPlayedSection extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                           color: Colors.grey[800],
                         ),
-                        child: song.albumImage != null
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  song.albumImage!,
-                                  fit: BoxFit.cover,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            song.albumImage ?? '',
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(
+                                  Icons.music_note,
+                                  color: Colors.white,
+                                  size: 40,
                                 ),
-                              )
-                            : const Icon(Icons.music_note,
-                                color: Colors.white, size: 40),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -82,8 +85,10 @@ class RecentlyPlayedSection extends StatelessWidget {
                           song.artistName!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style:
-                              TextStyle(color: Colors.grey[400], fontSize: 12),
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 12,
+                          ),
                         ),
                     ],
                   ),

@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../services/database_service.dart';
@@ -24,7 +26,9 @@ class _AlbumDialogState extends State<AlbumDialog> {
   bool isLoading = true;
   String? selectedArtistId;
   File? selectedCoverFile;
+  Uint8List? selectedCoverBytes;
   String? selectedFileName;
+  bool removeCurrentCover = false;
 
   @override
   void initState() {
@@ -58,10 +62,19 @@ class _AlbumDialogState extends State<AlbumDialog> {
       allowMultiple: false,
     );
 
-    if (result != null && result.files.single.path != null) {
+    if (result != null) {
+      final file = result.files.single;
       setState(() {
-        selectedCoverFile = File(result.files.single.path!);
-        selectedFileName = result.files.single.name;
+        selectedFileName = file.name;
+        if (kIsWeb) {
+          // Web: Use bytes
+          selectedCoverBytes = file.bytes;
+          selectedCoverFile = null;
+        } else {
+          // Mobile: Use file path
+          selectedCoverFile = File(file.path!);
+          selectedCoverBytes = null;
+        }
       });
     }
   }
@@ -126,11 +139,74 @@ class _AlbumDialogState extends State<AlbumDialog> {
                   validator: (val) => val == null ? "Select an artist" : null,
                 ),
                 const SizedBox(height: 12),
+                // Display current cover image when editing
+                if (widget.album != null &&
+                    widget.album!.albumProfileUrl != null &&
+                    !removeCurrentCover)
+                  Column(
+                    children: [
+                      const Text(
+                        'Current Cover:',
+                        style: TextStyle(color: Colors.white, fontSize: 14),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Image.network(
+                          widget.album!.albumProfileUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(
+                                Icons.broken_image,
+                                color: Colors.grey,
+                              ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            removeCurrentCover = true;
+                            selectedCoverFile = null;
+                            selectedCoverBytes = null;
+                            selectedFileName = null;
+                          });
+                        },
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        label: const Text(
+                          'Remove Cover',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
                 ElevatedButton.icon(
                   onPressed: _pickCover,
                   icon: const Icon(Icons.image),
-                  label: const Text("Pick Album Cover (Optional)"),
+                  label: Text(
+                    selectedFileName != null
+                        ? "Selected: $selectedFileName"
+                        : (widget.album != null &&
+                              widget.album!.albumProfileUrl != null &&
+                              !removeCurrentCover)
+                        ? "Change Album Cover"
+                        : "Pick Album Cover (Optional)",
+                  ),
                 ),
+                if (selectedFileName != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Selected file: $selectedFileName',
+                      style: const TextStyle(color: Colors.green, fontSize: 12),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -150,6 +226,7 @@ class _AlbumDialogState extends State<AlbumDialog> {
                   name: nameController.text,
                   artistId: selectedArtistId!,
                   coverFile: selectedCoverFile,
+                  coverBytes: selectedCoverBytes,
                 );
               } else {
                 await widget.db.updateAlbum(
@@ -157,6 +234,8 @@ class _AlbumDialogState extends State<AlbumDialog> {
                   name: nameController.text,
                   artistId: selectedArtistId!,
                   newCoverFile: selectedCoverFile,
+                  newCoverBytes: selectedCoverBytes,
+                  removeCurrentCover: removeCurrentCover,
                 );
               }
               Navigator.pop(context, true);

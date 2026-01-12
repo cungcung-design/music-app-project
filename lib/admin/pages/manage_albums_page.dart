@@ -25,7 +25,6 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
     loadAlbums();
     loadArtists();
   }
-  
 
   Future<void> loadAlbums() async {
     setState(() => loading = true);
@@ -57,7 +56,7 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
         : (artists.isNotEmpty ? artists.first : null);
 
     File? selectedCover;
-    String? coverFileName = album?.albumProfilePath;
+    String? coverFileName;
 
     showDialog(
       context: context,
@@ -180,6 +179,16 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
 
     return Scaffold(
       backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text('Manage Albums'),
+        backgroundColor: Colors.black,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => loadAlbums(),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.green,
         onPressed: () => showAlbumForm(),
@@ -207,19 +216,15 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
                 borderRadius: BorderRadius.circular(8),
                 color: Colors.grey[700],
               ),
-              child:
-                  album.albumProfileUrl != null &&
-                      album.albumProfileUrl!.isNotEmpty
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        album.albumProfileUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            const Icon(Icons.album, color: Colors.green),
-                      ),
-                    )
-                  : const Icon(Icons.album, color: Colors.green),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  album.albumProfileUrl ?? '',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      const Icon(Icons.album, color: Colors.green),
+                ),
+              ),
             ),
             title: Text(
               album.name,

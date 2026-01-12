@@ -52,9 +52,12 @@ class AlbumsPage extends StatelessWidget {
                 width: 48,
                 height: 48,
                 color: Colors.grey[700],
-                child: album.albumProfileUrl != null
-                    ? Image.network(album.albumProfileUrl!, fit: BoxFit.cover)
-                    : const Icon(Icons.album, color: Colors.white),
+                child: Image.network(
+                  album.albumProfileUrl ?? '',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.album, color: Colors.white),
+                ),
               ),
               title: Text(
                 album.name,

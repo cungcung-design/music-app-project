@@ -1,5 +1,3 @@
-- [ ] Add 'supabase' to dev_dependencies in pubspec.yaml
-- [ ] Change import in test_seeding.dart from supabase_flutter to supabase
-- [ ] Change import in database_seeder.dart from supabase_flutter to supabase
-- [ ] Run flutter pub get
-- [ ] Run dart test_seeding.dart
+- [x] Remove seeding button and logic from dashboard_page.dart
+- [x] Remove sync button and logic from admin_home.dart
+- [x] Delete database_seeder.dart file
