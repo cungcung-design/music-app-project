@@ -62,7 +62,7 @@ class DatabaseService {
   }) async {
     final res = await supabase.auth.signUp(email: email, password: password);
     if (res.user != null) {
-      await _createProfileIfNotExists(res.user!.id, email, name);
+      await createProfileIfNotExists(res.user!.id, email, name);
     } else if (res.session == null) {
       throw Exception('Signup failed');
     }
@@ -80,39 +80,52 @@ class DatabaseService {
 
   // -------------------- PROFILE --------------------
   Future<Profile?> getProfile(String userId) async {
-    final res = await supabase
+    final data = await supabase
         .from('profiles')
         .select()
         .eq('id', userId)
         .maybeSingle();
-    return res != null ? Profile.fromMap(res, supabase: supabase) : null;
+
+    return data != null
+        ? Profile.fromMap(data as Map<String, dynamic>, supabase: supabase)
+        : null;
   }
 
+  // -------------------------------
+  // GET CURRENT USER PROFILE
+  // -------------------------------
   Future<Profile?> getUserProfile() async {
-    final user = currentUser;
+    final user = supabase.auth.currentUser;
     if (user == null) return null;
     return getProfile(user.id);
   }
 
+  // -------------------------------
+  // UPDATE PROFILE
+  // -------------------------------
   Future<void> updateProfile({
     required String userId,
     required String name,
-    required String dob,
-    required String country,
-    String? avatarUrl,
+    String? dob,
+    String? country,
+    String? avatarPath,
   }) async {
     await supabase.from('profiles').upsert({
       'id': userId,
       'name': name,
-      'dob': dob,
-      'country': country,
-      if (avatarUrl != null) 'avatar_url': avatarUrl,
+      if (dob != null) 'dob': dob,
+      if (country != null) 'country': country,
+      if (avatarPath != null) 'avatar_url': avatarPath,
     });
   }
 
+  // -------------------------------
+  // UPLOAD AVATAR (OPTIONAL)
+  // -------------------------------
   Future<String> uploadAvatar(File file, String userId) async {
     final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
     final path = 'user_avatars/$userId/$fileName';
+
     await supabase.storage
         .from('profiles')
         .upload(
@@ -123,10 +136,14 @@ class DatabaseService {
             contentType: 'image/jpeg',
           ),
         );
-    return path; // return path instead of full URL
+
+    return path; // store path in avatar_url column
   }
 
-  Future<void> _createProfileIfNotExists(
+  // -------------------------------
+  // CREATE PROFILE IF NOT EXISTS
+  // -------------------------------
+  Future<void> createProfileIfNotExists(
     String userId,
     String email,
     String name,
@@ -141,42 +158,41 @@ class DatabaseService {
     }
   }
 
+  // -------------------------------
+  // GET ALL USERS
+  // -------------------------------
   Future<List<Profile>> getAllUsers() async {
-    final res = await supabase.from('profiles').select().order('name');
-    final data = List<Map<String, dynamic>>.from(res);
-    return data.map((e) => Profile.fromMap(e, supabase: supabase)).toList();
+    final data = await supabase.from('profiles').select().order('name');
+
+    return data
+        .map(
+          (e) => Profile.fromMap(e as Map<String, dynamic>, supabase: supabase),
+        )
+        .toList();
   }
+
+  // -------------------------------
+  // ADD USER
+  // -------------------------------
   Future<void> addUser({
     required String name,
     required String email,
-    required String country,
+    String? country,
   }) async {
     final id = const Uuid().v4();
 
-    final response = await supabase.from('profiles').insert({
+    await supabase.from('profiles').insert({
       'id': id,
       'name': name,
       'email': email,
-      'country': country,
+      if (country != null) 'country': country,
     });
-
-    if (response.error != null) {
-      throw response.error!.message;
-    }
   }
 
-
-
-
+  // -------------------------------
+  // DELETE USER
+  // -------------------------------
   Future<void> deleteUser(String userId) async {
-    final res = await supabase
-        .from('profiles')
-        .select('avatar_url')
-        .eq('id', userId)
-        .maybeSingle();
-    if (res != null && res['avatar_url'] != null) {
-      await supabase.storage.from('profiles').remove([res['avatar_url']]);
-    }
     await supabase.from('profiles').delete().eq('id', userId);
   }
 
@@ -872,9 +888,7 @@ class DatabaseService {
         final name = file.contains('.')
             ? file.substring(0, file.lastIndexOf('.'))
             : file;
-        final audioUrl = supabase.storage
-            .from('song_audio')
-            .getPublicUrl(file);
+        final audioUrl = supabase.storage.from('song_audio').getPublicUrl(file);
         allSongs.add(
           Song(
             id: '', // No ID for orphaned

@@ -21,6 +21,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
   File? selectedImage;
   String? avatarUrl;
+  String? avatarPath;
   bool isSaving = false;
 
   final picker = ImagePicker();
@@ -95,14 +96,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 backgroundImage: selectedImage != null
                     ? FileImage(selectedImage!)
                     : avatarUrl != null
-                        ? NetworkImage(avatarUrl!) as ImageProvider
-                        : null,
+                    ? NetworkImage(avatarUrl!) as ImageProvider
+                    : null,
                 child: selectedImage == null && avatarUrl == null
-                    ? const Icon(
-                        Icons.person,
-                        size: 50,
-                        color: Colors.white70,
-                      )
+                    ? const Icon(Icons.person, size: 50, color: Colors.white70)
                     : null,
               ),
             ),
@@ -159,7 +156,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                             name: nameController.text.trim(),
                             dob: dobController.text.trim(),
                             country: countryController.text.trim(),
-                            avatarUrl: uploadedAvatar,
+                            avatarPath: uploadedAvatar,
                           );
 
                           showToast(context, "Profile saved");
@@ -186,8 +183,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         width: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       )
                     : const Text("SAVE"),
