@@ -187,63 +187,112 @@ class _ManageSongsPageState extends State<ManageSongsPage> {
   }
 
   Future<void> saveSong({
-    Song? song,
+    Song? song, // null = add, not null = edit
     required String name,
     required String? artistId,
     required String? albumId,
-    File? audioFile,
+    File? audioFile, // optional for edit
   }) async {
+    // 1️⃣ Validate fields
     if (name.isEmpty || artistId == null || albumId == null) {
       showToast(context, "All fields required", isError: true);
       return;
     }
 
     try {
-      String songId = song?.id ?? uuid.v4(); // ✅ Always valid UUID
+      // 2️⃣ Generate UUID if new song
+      final String songId = song?.id ?? uuid.v4();
 
+      // 3️⃣ Handle audio file upload
       String? audioUrl;
+
       if (audioFile != null) {
+        // Upload new file and get URL
         audioUrl = await db.uploadSongAudio(file: audioFile);
-      } else {
-        audioUrl = song?.audioUrl;
+      } else if (song != null) {
+        // Keep existing audio URL
+        audioUrl = song.audioUrl;
       }
 
+      // 4️⃣ Audio is required if adding a new song
       if (song == null && audioUrl == null) {
         showToast(context, "Audio required", isError: true);
         return;
       }
 
+      // 5️⃣ Add or Update
       if (song == null) {
+        // ADD NEW SONG
         await db.addSong(
           id: songId,
-          name: name,
-          artistId: artistId!,
-          albumId: albumId!,
+          name: name.trim(),
+          artistId: artistId,
+          albumId: albumId,
           audioUrl: audioUrl!,
         );
         showToast(context, "Song added ✅");
       } else {
-        await db.updateSong(
-          id: song.id,
-          name: name,
-          artistId: artistId!,
-          albumId: albumId!,
-          audioUrl: audioUrl!,
-        );
-        showToast(context, "Song updated ✅");
+        // UPDATE EXISTING SONG
+        // If it's a storage-only song (no artist/album), treat as add to DB
+        if (song.artistId.isEmpty && song.albumId.isEmpty) {
+          // Storage-only song: add to database with new UUID
+          // Extract storage path from full URL
+          String storagePath;
+          if (audioUrl!.startsWith('http')) {
+            final uri = Uri.parse(audioUrl!);
+            storagePath = uri.pathSegments.last;
+          } else {
+            storagePath = audioUrl!;
+          }
+
+          await db.addSong(
+            id: uuid.v4(), // Generate new UUID for database
+            name: name.trim(),
+            artistId: artistId,
+            albumId: albumId,
+            audioUrl: storagePath, // Store storage path, not full URL
+          );
+          showToast(context, "Storage song added to database ✅");
+        } else {
+          // Regular DB song: update
+          await db.updateSong(
+            id: song.id,
+            name: name.trim(),
+            artistId: artistId,
+            albumId: albumId,
+            audioUrl: audioUrl,
+          );
+          showToast(context, "Song updated ✅");
+        }
       }
 
-      loadAll();
+      // 6️⃣ Reload list
+      await loadAll();
     } catch (e) {
       showToast(context, "Save failed: $e", isError: true);
     }
   }
 
   /// ================= DELETE =================
-  Future<void> deleteSong(String id) async {
-    await db.deleteSong(id);
-    showToast(context, "Song deleted");
-    loadAll();
+  Future<void> deleteSong(Song song) async {
+    try {
+      if (song.artistId.isEmpty && song.albumId.isEmpty) {
+        // Storage-only song, delete from storage
+        if (song.audioUrl != null) {
+          final uri = Uri.parse(song.audioUrl!);
+          final path = uri.pathSegments.last;
+          await db.supabase.storage.from('song_audio').remove([path]);
+          showToast(context, "Storage song deleted");
+        }
+      } else {
+        // Database song
+        await db.deleteSong(song.id);
+        showToast(context, "Song deleted");
+      }
+      loadAll();
+    } catch (e) {
+      showToast(context, "Delete failed: $e", isError: true);
+    }
   }
 
   /// ================= UI =================
@@ -316,7 +365,7 @@ class _ManageSongsPageState extends State<ManageSongsPage> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => deleteSong(song.id),
+                    onPressed: () => deleteSong(song),
                   ),
                 ],
               ),

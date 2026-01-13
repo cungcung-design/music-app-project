@@ -684,6 +684,7 @@ class DatabaseService {
         (file != null
             ? p.basename(file.path)
             : 'audio_${DateTime.now().millisecondsSinceEpoch}.mp3');
+
     final storageFileName =
         '${DateTime.now().millisecondsSinceEpoch}_$baseFileName';
 
@@ -695,17 +696,17 @@ class DatabaseService {
             file,
             fileOptions: const FileOptions(upsert: true),
           );
-    } else if (bytes != null) {
+    } else {
       await supabase.storage
           .from('song_audio')
           .uploadBinary(
             storageFileName,
-            bytes,
+            bytes!,
             fileOptions: const FileOptions(upsert: true),
           );
     }
 
-    return supabase.storage.from('song_audio').getPublicUrl(storageFileName);
+    return storageFileName;
   }
 
   Future<void> addSong({
@@ -729,27 +730,77 @@ class DatabaseService {
     String? name,
     String? artistId,
     String? albumId,
-    String? audioUrl,
+    String? audioUrl, // full URL or storage path
   }) async {
-    Map<String, dynamic> updateData = {};
-    if (name != null) updateData['name'] = name;
-    if (artistId != null) updateData['artist_id'] = artistId;
-    if (albumId != null) updateData['album_id'] = albumId;
-    if (audioUrl != null) updateData['audio_url'] = audioUrl;
+    final Map<String, dynamic> data = {};
 
-    await supabase.from('songs').update(updateData).eq('id', id);
+    if (name != null && name.isNotEmpty) data['name'] = name;
+    if (artistId != null && artistId.isNotEmpty) data['artist_id'] = artistId;
+    if (albumId != null && albumId.isNotEmpty) data['album_id'] = albumId;
+    if (audioUrl != null && audioUrl.isNotEmpty) data['audio_url'] = audioUrl;
+
+    if (data.isEmpty) {
+      throw Exception("No data to update");
+    }
+
+    final response = await supabase.from('songs').update(data).eq('id', id);
+
+    if (response.error != null) {
+      throw Exception("Update failed: ${response.error!.message}");
+    }
   }
 
   Future<void> deleteSong(String id) async {
-    final res = await supabase
+    final song = await supabase
         .from('songs')
         .select('audio_url')
         .eq('id', id)
         .maybeSingle();
-    if (res != null && res['audio_url'] != null) {
-      await supabase.storage.from('song_audio').remove([res['audio_url']]);
+
+    if (song != null && song['audio_url'] != null) {
+      final audioUrl = song['audio_url'] as String;
+      if (!audioUrl.startsWith('http')) {
+        await supabase.storage.from('song_audio').remove([audioUrl]);
+      }
     }
+
     await supabase.from('songs').delete().eq('id', id);
+  }
+
+  Future<String> replaceSongAudio({
+    required String songId,
+    required Uint8List newBytes,
+    required String fileName,
+  }) async {
+    // 1️⃣ Get old audio
+    final old = await supabase
+        .from('songs')
+        .select('audio_url')
+        .eq('id', songId)
+        .maybeSingle();
+
+    // 2️⃣ Delete old file
+    if (old != null && old['audio_url'] != null) {
+      await supabase.storage.from('song_audio').remove([old['audio_url']]);
+    }
+
+    final newPath = '${DateTime.now().millisecondsSinceEpoch}_$fileName';
+
+    await supabase.storage
+        .from('song_audio')
+        .uploadBinary(
+          newPath,
+          newBytes,
+          fileOptions: const FileOptions(upsert: true),
+        );
+
+    // 4️⃣ Update DB
+    await supabase
+        .from('songs')
+        .update({'audio_url': newPath})
+        .eq('id', songId);
+
+    return newPath;
   }
 
   // -------------------- FAVORITES --------------------
@@ -972,7 +1023,6 @@ class DatabaseService {
     final orphanedUrls = await getOrphanedSongs();
 
     for (final url in orphanedUrls) {
-      // Extract song name from URL or use a default
       final uri = Uri.parse(url);
       final fileName = uri.pathSegments.last;
       final songName = fileName.split('.').first.replaceAll('_', ' ');
@@ -980,8 +1030,8 @@ class DatabaseService {
       await addSong(
         id: uuid.v4(),
         name: songName,
-        artistId: '', // Default empty artist
-        albumId: '', // Default empty album
+        artistId: '',
+        albumId: '',
         audioUrl: url,
       );
     }
