@@ -110,10 +110,10 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
                           : null,
                     ),
 
-                    // title: Text(
-                    //   user.name,
-                    //   style: const TextStyle(color: Colors.white),
-                    // ),
+                    title: Text(
+                      user.name ?? 'No Name',
+                      style: const TextStyle(color: Colors.white),
+                    ),
                     subtitle: Text(
                       user.email,
                       style: const TextStyle(color: Colors.grey),

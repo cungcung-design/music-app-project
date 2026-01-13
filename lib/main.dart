@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:project/auth/signup_page.dart';
 import 'package:project/user/pages/complete_profile_page.dart';
 import 'package:project/user/pages/profile_form_page.dart';
 import 'package:project/user/pages/user_profile_page.dart';
@@ -78,7 +79,7 @@ class _MyAppState extends State<MyApp> {
     // Step 3: Normal logged-in user → UserHomePage
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: UserHomePage(),
+      home: AdminHomePage(),
     );
   }
 }
