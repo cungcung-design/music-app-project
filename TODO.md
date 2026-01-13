@@ -1,3 +1,2 @@
-- [ ] Update Profile model to make name optional (String?)
-- [ ] Add saveProfile method in database_service.dart
-- [ ] Modify profile_form_page.dart to allow optional name
+- [x] Modify updateSong in database_service.dart to remove old audio when audioUrl is updated
+- [x] Update songs_dialog.dart to remove old audio from storage when updating songs from storage

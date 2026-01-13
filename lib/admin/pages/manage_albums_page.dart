@@ -28,22 +28,40 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
     loadArtists();
   }
 
+  // Future<void> loadAlbums() async {
+  //   setState(() => loading = true);
+
+  //   final tableAlbums = await db.getAlbums();
+  //   final storageAlbums = await db.fetchAlbumsFromStorage();
+
+  //   final tableIds = tableAlbums.map((e) => e.id).toSet();
+  //   final virtualAlbums = storageAlbums.where((a) => !tableIds.contains(a.id)).toList();
+
+  //   if (mounted) {
+  //     setState(() {
+  //       albums = [...tableAlbums, ...virtualAlbums];
+  //       loading = false;
+  //     });
+  //   }
+  // }
+  
   Future<void> loadAlbums() async {
-    setState(() => loading = true);
+  setState(() => loading = true);
 
+  try {
     final tableAlbums = await db.getAlbums();
-    final storageAlbums = await db.fetchAlbumsFromStorage();
 
-    final tableIds = tableAlbums.map((e) => e.id).toSet();
-    final virtualAlbums = storageAlbums.where((a) => !tableIds.contains(a.id)).toList();
+    if (!mounted) return;
 
-    if (mounted) {
-      setState(() {
-        albums = [...tableAlbums, ...virtualAlbums];
-        loading = false;
-      });
-    }
+    setState(() {
+      albums = tableAlbums; 
+      loading = false;
+    });
+  } catch (e) {
+    setState(() => loading = false);
+    showToast(context, "Failed to load albums: $e", isError: true);
   }
+}
 
   Future<void> loadArtists() async {
     final data = await db.getArtists();
@@ -245,11 +263,7 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text('Manage Albums'),
-        backgroundColor: Colors.black,
-        actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: loadAlbums)],
-      ),
+      
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.green,
         onPressed: () => showAlbumForm(),

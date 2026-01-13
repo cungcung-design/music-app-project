@@ -737,7 +737,32 @@ class DatabaseService {
     if (name != null && name.isNotEmpty) data['name'] = name;
     if (artistId != null && artistId.isNotEmpty) data['artist_id'] = artistId;
     if (albumId != null && albumId.isNotEmpty) data['album_id'] = albumId;
-    if (audioUrl != null && audioUrl.isNotEmpty) data['audio_url'] = audioUrl;
+
+    // Handle audioUrl update: remove old audio if changing
+    if (audioUrl != null && audioUrl.isNotEmpty) {
+      // Get current song to check old audioUrl
+      final currentSong = await supabase
+          .from('songs')
+          .select('audio_url')
+          .eq('id', id)
+          .maybeSingle();
+
+      if (currentSong != null && currentSong['audio_url'] != null) {
+        final oldAudioUrl = currentSong['audio_url'] as String;
+        // If old audio is a storage path (not full URL), delete it
+        if (!oldAudioUrl.startsWith('http')) {
+          try {
+            await supabase.storage.from('song_audio').remove([oldAudioUrl]);
+          } catch (e) {
+            print(
+              'Failed to delete old audio: $e',
+            ); // Log but don't fail update
+          }
+        }
+      }
+
+      data['audio_url'] = audioUrl;
+    }
 
     if (data.isEmpty) {
       throw Exception("No data to update");

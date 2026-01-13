@@ -306,13 +306,7 @@ class _ManageSongsPageState extends State<ManageSongsPage> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text("Manage Songs"),
-        backgroundColor: Colors.black,
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: loadAll),
-        ],
-      ),
+      
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.green,
         onPressed: () => showSongForm(),

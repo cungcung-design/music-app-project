@@ -76,8 +76,13 @@ class _UserDetailPageState extends State<UserDetailPage> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Edit User'),
-        backgroundColor: Colors.black,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color.fromARGB(255, 253, 253, 253)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Edit User' , style: TextStyle(color: Color.fromARGB(255, 237, 236, 236)),),
+        backgroundColor: const Color.fromARGB(255, 18, 18, 18),
+        
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

@@ -34,10 +34,7 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
     return Scaffold(
       backgroundColor: Colors.black,
 
-      appBar: AppBar(
-        title: const Text('Manage Users'),
-        backgroundColor: Colors.black,
-      ),
+  
 
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.green,

@@ -198,12 +198,15 @@ class _SongDialogState extends State<SongDialog> {
             child: const Text("Delete"),
             onPressed: () async {
               // Handle storage-only songs differently
-              if (widget.song!.artistId.isEmpty && widget.song!.albumId.isEmpty) {
+              if (widget.song!.artistId.isEmpty &&
+                  widget.song!.albumId.isEmpty) {
                 // Storage-only song, delete from storage
                 if (widget.song!.audioUrl != null) {
                   final uri = Uri.parse(widget.song!.audioUrl!);
                   final path = uri.pathSegments.last;
-                  await widget.db.supabase.storage.from('song_audio').remove([path]);
+                  await widget.db.supabase.storage.from('song_audio').remove([
+                    path,
+                  ]);
                   showToast(context, "Storage song deleted");
                 }
               } else {
@@ -247,19 +250,17 @@ class _SongDialogState extends State<SongDialog> {
               );
               showToast(context, "Song added ✅");
             } else {
-             
               if (widget.song!.artistId.isEmpty &&
                   widget.song!.albumId.isEmpty) {
-              
                 await widget.db.addSong(
-                  id: uuid.v4(), 
+                  id: uuid.v4(),
+                  name: nameController.text.trim(),
                   artistId: selectedArtistId!,
                   albumId: selectedAlbumId!,
-                  audioUrl: audioPath!, 
+                  audioUrl: audioPath!,
                 );
                 showToast(context, "Storage song added to database ✅");
               } else {
-               
                 await widget.db.updateSong(
                   id: widget.song!.id,
                   name: nameController.text.trim(),

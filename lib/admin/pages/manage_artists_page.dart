@@ -45,16 +45,7 @@ class _ManageArtistsPageState extends State<ManageArtistsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text('Manage Artists'),
-        backgroundColor: Colors.black,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => setState(() => _loadArtists()),
-          ),
-        ],
-      ),
+      
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.green,
         onPressed: () => _openArtistDialog(),

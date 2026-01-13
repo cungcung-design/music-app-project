@@ -16,10 +16,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: const Text('Admin Dashboard'),
-      ),
+     
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: FutureBuilder<List<dynamic>>(
