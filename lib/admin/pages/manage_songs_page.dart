@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:uuid/uuid.dart';
 import '../../services/database_service.dart';
 import '../../models/song.dart';
 import '../../models/artist.dart';
@@ -18,6 +19,7 @@ class ManageSongsPage extends StatefulWidget {
 class _ManageSongsPageState extends State<ManageSongsPage> {
   final DatabaseService db = DatabaseService();
   final AudioPlayer audioPlayer = AudioPlayer();
+  final Uuid uuid = Uuid();
 
   List<Song> songs = [];
   List<Artist> artists = [];
@@ -31,7 +33,6 @@ class _ManageSongsPageState extends State<ManageSongsPage> {
     super.initState();
     loadAll();
 
-    // Reset currentlyPlayingSong when audio finishes
     audioPlayer.onPlayerComplete.listen((event) {
       setState(() => currentlyPlayingSong = null);
     });
@@ -43,25 +44,46 @@ class _ManageSongsPageState extends State<ManageSongsPage> {
     super.dispose();
   }
 
+  /// ================= LOAD DATA =================
   Future<void> loadAll() async {
     setState(() => loading = true);
-    final fetchedSongs = await db.getSongsWithDetails();
-    final fetchedArtists = await db.getArtists();
-    final fetchedAlbums = await db.getAlbums();
 
-    if (mounted) {
-      setState(() {
-        songs = fetchedSongs;
-        artists = fetchedArtists;
-        albums = fetchedAlbums;
-        loading = false;
-      });
-    }
+    final dbSongs = await db.getSongsWithDetails();
+    final dbArtists = await db.getArtists();
+    final dbAlbums = await db.getAlbums();
+    final storageSongs = await db.fetchSongsFromStorage();
+
+    final dbSongIds = dbSongs.map((s) => s.id).toSet();
+
+    // Convert storage-only songs to Song objects
+    final storageOnlySongs = storageSongs
+        .where((s) => !dbSongIds.contains(s.id))
+        .map(
+          (s) => Song(
+            id: s.id,
+            name: s.name,
+            artistId: '',
+            albumId: '',
+            audioUrl: s.url,
+            artistName: 'Storage Only',
+            albumImage: null,
+          ),
+        )
+        .toList();
+
+    if (!mounted) return;
+
+    setState(() {
+      songs = [...dbSongs, ...storageOnlySongs];
+      artists = dbArtists;
+      albums = dbAlbums;
+      loading = false;
+    });
   }
 
+  /// ================= PLAY / PAUSE =================
   Future<void> playPauseSong(Song song) async {
     try {
-      // If this song is already playing, pause it
       if (currentlyPlayingSong?.id == song.id &&
           audioPlayer.state == PlayerState.playing) {
         await audioPlayer.pause();
@@ -69,8 +91,12 @@ class _ManageSongsPageState extends State<ManageSongsPage> {
         return;
       }
 
-      // Play new song instantly
-      await audioPlayer.setSourceUrl(song.audioUrl ?? '');
+      if (song.audioUrl == null) {
+        showToast(context, "Audio not found", isError: true);
+        return;
+      }
+
+      await audioPlayer.setSourceUrl(song.audioUrl!);
       await audioPlayer.resume();
       setState(() => currentlyPlayingSong = song);
     } catch (e) {
@@ -78,17 +104,17 @@ class _ManageSongsPageState extends State<ManageSongsPage> {
     }
   }
 
+  /// ================= ADD / EDIT SONG =================
   void showSongForm({Song? song}) {
     final nameController = TextEditingController(text: song?.name ?? '');
     String? selectedArtistId = song?.artistId;
     String? selectedAlbumId = song?.albumId;
     File? selectedAudio;
-    String? audioFileName = song?.audioUrl?.split('/').last;
 
     showDialog(
       context: context,
       builder: (_) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
+        builder: (context, setStateDialog) => AlertDialog(
           backgroundColor: Colors.grey[900],
           title: Text(
             song == null ? "Add Song" : "Edit Song",
@@ -97,75 +123,62 @@ class _ManageSongsPageState extends State<ManageSongsPage> {
           content: SingleChildScrollView(
             child: Column(
               children: [
-                _buildTextField(nameController),
+                _textField(nameController),
                 const SizedBox(height: 12),
-                _buildDropdown(
-                  value: selectedArtistId,
-                  items: artists
-                      .map(
-                        (a) => DropdownMenuItem(
-                          value: a.id,
-                          child: Text(
-                            a.name,
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  label: "Select Artist",
-                  onChanged: (value) =>
-                      setState(() => selectedArtistId = value),
+                _dropdown(
+                  label: "Artist",
+                  value: artists.any((a) => a.id == selectedArtistId)
+                      ? selectedArtistId
+                      : null,
+                  items: artists,
+                  getId: (a) => a.id,
+                  getLabel: (a) => a.name,
+                  onChanged: (v) => setStateDialog(() => selectedArtistId = v),
                 ),
                 const SizedBox(height: 12),
-                _buildDropdown(
-                  value: selectedAlbumId,
-                  items: albums
-                      .map(
-                        (a) => DropdownMenuItem(
-                          value: a.id,
-                          child: Text(
-                            a.name,
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  label: "Select Album",
-                  onChanged: (value) => setState(() => selectedAlbumId = value),
+                _dropdown(
+                  label: "Album",
+                  value: albums.any((a) => a.id == selectedAlbumId)
+                      ? selectedAlbumId
+                      : null,
+                  items: albums,
+                  getId: (a) => a.id,
+                  getLabel: (a) => a.name,
+                  onChanged: (v) => setStateDialog(() => selectedAlbumId = v),
                 ),
                 const SizedBox(height: 12),
-                _buildAudioPicker(setState, (file, name) {
-                  selectedAudio = file;
-                  audioFileName = name;
-                }),
-                if (audioFileName != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      "Selected: $audioFileName",
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.audiotrack),
+                  label: const Text("Pick Audio"),
+                  onPressed: () async {
+                    final result = await FilePicker.platform.pickFiles(
+                      type: FileType.audio,
+                    );
+                    if (result != null && result.files.single.path != null) {
+                      selectedAudio = File(result.files.single.path!);
+                    }
+                  },
+                ),
               ],
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+              child: const Text("Cancel", style: TextStyle(color: Colors.red)),
             ),
             TextButton(
               onPressed: () async {
-                await _saveSong(
-                  song,
-                  nameController.text.trim(),
-                  selectedArtistId,
-                  selectedAlbumId,
-                  selectedAudio,
+                await saveSong(
+                  song: song,
+                  name: nameController.text.trim(),
+                  artistId: selectedArtistId,
+                  albumId: selectedAlbumId,
+                  audioFile: selectedAudio,
                 );
                 Navigator.pop(context);
               },
-              child: const Text('Save', style: TextStyle(color: Colors.green)),
+              child: const Text("Save", style: TextStyle(color: Colors.green)),
             ),
           ],
         ),
@@ -173,131 +186,79 @@ class _ManageSongsPageState extends State<ManageSongsPage> {
     );
   }
 
-  Future<void> deleteSong(String id) async {
-    await db.deleteSong(id);
-    showToast(context, "Song deleted ✅");
-    loadAll();
-  }
-
-  Widget _buildTextField(TextEditingController controller) {
-    return TextField(
-      controller: controller,
-      style: const TextStyle(color: Colors.white),
-      decoration: const InputDecoration(
-        hintText: 'Song Name',
-        hintStyle: TextStyle(color: Colors.grey),
-      ),
-    );
-  }
-
-  Widget _buildDropdown({
-    required String? value,
-    required List<DropdownMenuItem<String>> items,
-    required String label,
-    required Function(String?) onChanged,
-  }) {
-    return DropdownButtonFormField<String>(
-      value: value,
-      items: items,
-      onChanged: onChanged,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.grey),
-      ),
-      dropdownColor: Colors.grey[800],
-      style: const TextStyle(color: Colors.white),
-    );
-  }
-
-  Widget _buildAudioPicker(
-    StateSetter setState,
-    Function(File, String) onFilePicked,
-  ) {
-    return ElevatedButton.icon(
-      onPressed: () async {
-        FilePickerResult? result = await FilePicker.platform.pickFiles(
-          type: FileType.audio,
-        );
-        if (result != null && result.files.single.path != null) {
-          File file = File(result.files.single.path!);
-          setState(() => onFilePicked(file, result.files.single.name));
-        }
-      },
-      icon: const Icon(Icons.audiotrack),
-      label: const Text("Pick Audio File"),
-    );
-  }
-
-  Future<void> _saveSong(
+  Future<void> saveSong({
     Song? song,
-    String name,
-    String? artistId,
-    String? albumId,
+    required String name,
+    required String? artistId,
+    required String? albumId,
     File? audioFile,
-  ) async {
+  }) async {
     if (name.isEmpty || artistId == null || albumId == null) {
-      showToast(context, "Name, artist, and album are required", isError: true);
-      return;
-    }
-
-    if (song == null && audioFile == null) {
-      showToast(context, "Audio file is required for new songs", isError: true);
+      showToast(context, "All fields required", isError: true);
       return;
     }
 
     try {
-      String? audioUrl;
+      String songId = song?.id ?? uuid.v4(); // ✅ Always valid UUID
 
+      String? audioUrl;
       if (audioFile != null) {
-        audioUrl = await db.uploadSongAudio(audioFile);
-      } else if (song != null) {
-        audioUrl = song.audioUrl;
+        audioUrl = await db.uploadSongAudio(file: audioFile);
+      } else {
+        audioUrl = song?.audioUrl;
       }
 
-      if (song != null && audioUrl == null) {
-        showToast(
-          context,
-          "Cannot edit song: audio data is missing",
-          isError: true,
-        );
+      if (song == null && audioUrl == null) {
+        showToast(context, "Audio required", isError: true);
         return;
       }
 
       if (song == null) {
         await db.addSong(
+          id: songId,
           name: name,
-          artistId: artistId,
-          albumId: albumId,
+          artistId: artistId!,
+          albumId: albumId!,
           audioUrl: audioUrl!,
         );
-        showToast(context, "Song added ");
+        showToast(context, "Song added ✅");
       } else {
         await db.updateSong(
           id: song.id,
           name: name,
-          artistId: artistId,
-          albumId: albumId,
+          artistId: artistId!,
+          albumId: albumId!,
           audioUrl: audioUrl!,
         );
-        showToast(context, "Song updated ");
+        showToast(context, "Song updated ✅");
       }
 
-      await loadAll();
+      loadAll();
     } catch (e) {
-      showToast(context, "Operation failed: $e", isError: true);
+      showToast(context, "Save failed: $e", isError: true);
     }
   }
 
+  /// ================= DELETE =================
+  Future<void> deleteSong(String id) async {
+    await db.deleteSong(id);
+    showToast(context, "Song deleted");
+    loadAll();
+  }
+
+  /// ================= UI =================
   @override
   Widget build(BuildContext context) {
-    if (loading)
+    if (loading) {
       return const Center(
         child: CircularProgressIndicator(color: Colors.green),
       );
+    }
 
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Manage Songs'),
+        title: const Text("Manage Songs"),
         backgroundColor: Colors.black,
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: loadAll),
@@ -332,138 +293,30 @@ class _ManageSongsPageState extends State<ManageSongsPage> {
 
           return Card(
             color: Colors.grey[850],
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            child: ListTile(
+              leading: Icon(
+                isPlaying ? Icons.pause : Icons.play_arrow,
+                color: Colors.green,
+              ),
+              title: Text(
+                song.name,
+                style: const TextStyle(color: Colors.white),
+              ),
+              subtitle: Text(
+                "${artist.name} • ${album.name}",
+                style: const TextStyle(color: Colors.grey),
+              ),
+              onTap: () => playPauseSong(song),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          artist.artistProfileUrl ?? '',
-                          width: 50,
-                          height: 50,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                                width: 50,
-                                height: 50,
-                                color: Colors.grey[700],
-                                child: const Icon(
-                                  Icons.person,
-                                  color: Colors.white,
-                                ),
-                              ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              song.name,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${artist.name} • ${album.name}',
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (isPlaying) ...[
-                              const SizedBox(height: 8),
-                              SliderTheme(
-                                data: SliderTheme.of(context).copyWith(
-                                  thumbShape: const RoundSliderThumbShape(
-                                    enabledThumbRadius: 6,
-                                  ),
-                                  overlayShape: const RoundSliderOverlayShape(
-                                    overlayRadius: 12,
-                                  ),
-                                  activeTrackColor: Colors.green,
-                                  inactiveTrackColor: Colors.grey,
-                                  thumbColor: Colors.green,
-                                ),
-                                child: StreamBuilder<Duration>(
-                                  stream: audioPlayer.onPositionChanged,
-                                  builder: (context, snapshot) {
-                                    final pos = snapshot.data ?? Duration.zero;
-                                    return FutureBuilder<Duration?>(
-                                      future: audioPlayer.getDuration(),
-                                      builder: (context, durationSnapshot) {
-                                        final total =
-                                            durationSnapshot.data ??
-                                            Duration(seconds: 1);
-                                        return Slider(
-                                          value: pos.inSeconds.toDouble().clamp(
-                                            0,
-                                            total.inSeconds.toDouble(),
-                                          ),
-                                          max: total.inSeconds.toDouble(),
-                                          onChanged: (value) =>
-                                              audioPlayer.seek(
-                                                Duration(
-                                                  seconds: value.toInt(),
-                                                ),
-                                              ),
-                                        );
-                                      },
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          isPlaying ? Icons.pause : Icons.play_arrow,
-                          color: Colors.green,
-                        ),
-                        onPressed: song.audioUrl != null
-                            ? () => playPauseSong(song)
-                            : null,
-                      ),
-                    ],
+                  IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.blue),
+                    onPressed: () => showSongForm(song: song),
                   ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      IconButton(
-                        icon: const Icon(
-                          Icons.edit,
-                          color: Colors.blue,
-                          size: 20,
-                        ),
-                        onPressed: () => showSongForm(song: song),
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.delete,
-                          color: Colors.red,
-                          size: 20,
-                        ),
-                        onPressed: () => deleteSong(song.id),
-                      ),
-                    ],
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => deleteSong(song.id),
                   ),
                 ],
               ),
@@ -471,6 +324,47 @@ class _ManageSongsPageState extends State<ManageSongsPage> {
           );
         },
       ),
+    );
+  }
+
+  Widget _textField(TextEditingController c) {
+    return TextField(
+      controller: c,
+      style: const TextStyle(color: Colors.white),
+      decoration: const InputDecoration(
+        hintText: "Song name",
+        hintStyle: TextStyle(color: Colors.grey),
+      ),
+    );
+  }
+
+  Widget _dropdown<T>({
+    required String label,
+    required String? value,
+    required List<T> items,
+    required String Function(T) getId,
+    required String Function(T) getLabel,
+    required Function(String?) onChanged,
+  }) {
+    return DropdownButtonFormField<String>(
+      value: items.any((e) => getId(e) == value) ? value : null,
+      dropdownColor: Colors.grey[800],
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white),
+      ),
+      items: items
+          .map(
+            (e) => DropdownMenuItem(
+              value: getId(e),
+              child: Text(
+                getLabel(e),
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          )
+          .toList(),
+      onChanged: onChanged,
     );
   }
 }

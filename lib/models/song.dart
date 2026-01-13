@@ -3,10 +3,10 @@ class Song {
   final String name;
   final String artistId;
   final String albumId;
-  final String? audioUrl; 
-  final String? artistName; 
+  final String? audioUrl;
+  final String? artistName;
   final String? albumImage;
-  final int? playCount; 
+  final int? playCount;
 
   Song({
     required this.id,
@@ -53,5 +53,27 @@ class Song {
       'audio_url': audioUrl,
       'play_count': playCount,
     };
+  }
+
+  Song copyWith({
+    String? id,
+    String? name,
+    String? artistId,
+    String? albumId,
+    String? audioUrl,
+    String? artistName,
+    String? albumImage,
+    int? playCount,
+  }) {
+    return Song(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      artistId: artistId ?? this.artistId,
+      albumId: albumId ?? this.albumId,
+      audioUrl: audioUrl ?? this.audioUrl,
+      artistName: artistName ?? this.artistName,
+      albumImage: albumImage ?? this.albumImage,
+      playCount: playCount ?? this.playCount,
+    );
   }
 }
