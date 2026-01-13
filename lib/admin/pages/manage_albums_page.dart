@@ -6,7 +6,9 @@ import 'package:file_picker/file_picker.dart';
 import '../../services/database_service.dart';
 import '../../models/album.dart';
 import '../../models/artist.dart';
+import '../../models/song.dart';
 import '../../utils/toast.dart';
+import 'album_detail_page.dart';
 
 class ManageAlbumsPage extends StatefulWidget {
   const ManageAlbumsPage({super.key});
@@ -19,61 +21,29 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
   final DatabaseService db = DatabaseService();
   List<Album> albums = [];
   List<Artist> artists = [];
+  List<Song> songs = [];
   bool loading = true;
 
   @override
   void initState() {
     super.initState();
-    loadAlbums();
-    loadArtists();
+    loadData();
   }
 
-  // Future<void> loadAlbums() async {
-  //   setState(() => loading = true);
-
-  //   final tableAlbums = await db.getAlbums();
-  //   final storageAlbums = await db.fetchAlbumsFromStorage();
-
-  //   final tableIds = tableAlbums.map((e) => e.id).toSet();
-  //   final virtualAlbums = storageAlbums.where((a) => !tableIds.contains(a.id)).toList();
-
-  //   if (mounted) {
-  //     setState(() {
-  //       albums = [...tableAlbums, ...virtualAlbums];
-  //       loading = false;
-  //     });
-  //   }
-  // }
-  
-  Future<void> loadAlbums() async {
-  setState(() => loading = true);
-
-  try {
-    final tableAlbums = await db.getAlbums();
-
-    if (!mounted) return;
-
-    setState(() {
-      albums = tableAlbums; 
-      loading = false;
-    });
-  } catch (e) {
-    setState(() => loading = false);
-    showToast(context, "Failed to load albums: $e", isError: true);
-  }
-}
-
-  Future<void> loadArtists() async {
-    final data = await db.getArtists();
-    if (mounted) setState(() => artists = data);
-  }
-
-  void showAlbumForm({Album? album}) {
-    if (album != null && album.artistId.isEmpty) {
-      showToast(context, "Cannot edit storage-only album. Use Import instead.", isError: true);
-      return;
+  Future<void> loadData() async {
+    setState(() => loading = true);
+    try {
+      albums = await db.getAlbums();
+      artists = await db.getArtists();
+      songs = await db.getSongsWithDetails();
+    } catch (e) {
+      showToast(context, "Failed to load data: $e", isError: true);
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
+  }
 
+  void showAlbumForm({Album? album}) async {
     final nameController = TextEditingController(text: album?.name ?? '');
     Artist? selectedArtist = album != null
         ? artists.firstWhere((a) => a.id == album.artistId, orElse: () => artists.first)
@@ -88,41 +58,38 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
       builder: (_) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           backgroundColor: Colors.grey[900],
-          title: Text(album == null ? "Add Album" : "Edit Album",
-              style: const TextStyle(color: Colors.white)),
+          title: Text(album == null ? "Add Album" : "Edit Album", style: const TextStyle(color: Colors.white)),
           content: SingleChildScrollView(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
-                    hintText: "Album Name",
+                    hintText: "Album Name", 
                     hintStyle: TextStyle(color: Colors.grey),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.green)),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 DropdownButton<Artist>(
                   value: selectedArtist,
                   dropdownColor: Colors.grey[900],
                   isExpanded: true,
-                  items: artists
-                      .map((a) => DropdownMenuItem(
-                            value: a,
-                            child: Text(a.name, style: const TextStyle(color: Colors.white)),
-                          ))
-                      .toList(),
+                  items: artists.map((a) => DropdownMenuItem(
+                    value: a, 
+                    child: Text(a.name, style: const TextStyle(color: Colors.white))
+                  )).toList(),
                   onChanged: (v) => setState(() => selectedArtist = v),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 ElevatedButton.icon(
-                  icon: const Icon(Icons.image),
-                  label: const Text("Pick Cover"),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[800]),
+                  icon: const Icon(Icons.image, color: Colors.green),
+                  label: const Text("Pick Cover Art", style: TextStyle(color: Colors.white)),
                   onPressed: () async {
-                    final result = await FilePicker.platform.pickFiles(
-                      type: FileType.image,
-                      withData: kIsWeb, // important for web
-                    );
+                    final result = await FilePicker.platform.pickFiles(type: FileType.image, withData: kIsWeb);
                     if (result != null) {
                       coverFileName = result.files.single.name;
                       if (kIsWeb) {
@@ -134,127 +101,34 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
                     }
                   },
                 ),
-                if (coverFileName != null)
-                  Text("Selected: $coverFileName", style: const TextStyle(color: Colors.white)),
+                if (coverFileName != null) 
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(coverFileName!, style: const TextStyle(color: Colors.green, fontSize: 12)),
+                  ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel", style: TextStyle(color: Colors.red))),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel", style: TextStyle(color: Colors.grey))),
             TextButton(
               onPressed: () async {
                 final name = nameController.text.trim();
-                if (name.isEmpty || selectedArtist == null) {
-                  showToast(context, "All fields required", isError: true);
-                  return;
+                if (name.isEmpty || selectedArtist == null) return;
+                if (album == null) {
+                  await db.addAlbum(name: name, artistId: selectedArtist!.id, coverFile: selectedCover, coverBytes: selectedCoverBytes);
+                } else {
+                  await db.updateAlbum(albumId: album.id, name: name, artistId: selectedArtist!.id, newCoverFile: selectedCover, newCoverBytes: selectedCoverBytes);
                 }
-
-                try {
-                  if (album == null) {
-                    await db.addAlbum(
-                      name: name,
-                      artistId: selectedArtist!.id,
-                      coverFile: selectedCover,
-                      coverBytes: selectedCoverBytes,
-                    );
-                    showToast(context, "Album added ✅");
-                  } else {
-                    await db.updateAlbum(
-                      albumId: album.id,
-                      name: name,
-                      artistId: selectedArtist!.id,
-                      newCoverFile: selectedCover,
-                      newCoverBytes: selectedCoverBytes,
-                    );
-                    showToast(context, "Album updated ✅");
-                  }
-                  Navigator.pop(context);
-                  loadAlbums();
-                } catch (e) {
-                  showToast(context, "Operation failed: $e", isError: true);
-                }
+                Navigator.pop(context);
+                loadData();
               },
-              child: const Text("Save", style: TextStyle(color: Colors.green)),
+              child: const Text("Save", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
       ),
     );
-  }
-
-  void importStorageAlbum(Album album) {
-    final nameController = TextEditingController(text: album.name);
-    Artist? selectedArtist = artists.isNotEmpty ? artists.first : null;
-
-    showDialog(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: const Text("Import Album", style: TextStyle(color: Colors.white)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(hintText: "Album Name", hintStyle: TextStyle(color: Colors.grey)),
-              ),
-              const SizedBox(height: 12),
-              DropdownButton<Artist>(
-                value: selectedArtist,
-                dropdownColor: Colors.grey[900],
-                isExpanded: true,
-                items: artists
-                    .map((a) => DropdownMenuItem(
-                          value: a,
-                          child: Text(a.name, style: const TextStyle(color: Colors.white)),
-                        ))
-                    .toList(),
-                onChanged: (v) => setState(() => selectedArtist = v),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel", style: TextStyle(color: Colors.red))),
-            TextButton(
-              onPressed: () async {
-                final name = nameController.text.trim();
-                if (name.isEmpty || selectedArtist == null) {
-                  showToast(context, "All fields required", isError: true);
-                  return;
-                }
-                try {
-                  // Insert storage album into DB
-                  await db.addAlbum(
-                    name: name,
-                    artistId: selectedArtist!.id,
-                    coverFile: null,
-                    coverBytes: null,
-                  );
-                  showToast(context, "Album imported ✅");
-                  Navigator.pop(context);
-                  loadAlbums();
-                } catch (e) {
-                  showToast(context, "Import failed: $e", isError: true);
-                }
-              },
-              child: const Text("Import", style: TextStyle(color: Colors.green)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> deleteAlbum(String id, {bool isVirtual = false}) async {
-    if (isVirtual) {
-      showToast(context, "Cannot delete storage-only album", isError: true);
-      return;
-    }
-    await db.deleteAlbum(id);
-    showToast(context, "Album deleted ✅");
-    loadAlbums();
   }
 
   @override
@@ -263,56 +137,42 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      
+      appBar: AppBar(title: const Text("Manage Albums"), backgroundColor: Colors.black, elevation: 0),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.green,
         onPressed: () => showAlbumForm(),
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add, color: Colors.black),
       ),
-      body: ListView.separated(
+      body: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: albums.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (_, i) {
           final album = albums[i];
-          final artistName = album.artistId.isEmpty
-              ? 'Storage only'
-              : artists.firstWhere((a) => a.id == album.artistId, orElse: () => Artist(id: '', name: 'Unknown', bio: '')).name;
+          final artist = artists.firstWhere((a) => a.id == album.artistId, orElse: () => Artist(id: '', name: 'Unknown', bio: ''));
 
-          return ListTile(
-            tileColor: Colors.grey[850],
-            leading: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                album.albumProfileUrl ?? '',
-                width: 48,
-                height: 48,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(Icons.album, color: Colors.green),
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(color: Colors.grey[900], borderRadius: BorderRadius.circular(12)),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              leading: Hero(
+                tag: 'album-${album.id}',
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    album.albumProfileUrl ?? '',
+                    width: 50, height: 50, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.album, color: Colors.green, size: 50),
+                  ),
+                ),
               ),
-            ),
-            title: Text(album.name, style: const TextStyle(color: Colors.white)),
-            subtitle: Text("Artist: $artistName", style: const TextStyle(color: Colors.grey)),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (album.artistId.isEmpty)
-                  IconButton(
-                    icon: const Icon(Icons.download, color: Colors.orange),
-                    onPressed: () => importStorageAlbum(album),
-                    tooltip: "Import",
-                  )
-                else ...[
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.blue),
-                    onPressed: () => showAlbumForm(album: album),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => deleteAlbum(album.id),
-                  ),
-                ],
-              ],
+              title: Text(album.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              subtitle: Text(artist.name, style: const TextStyle(color: Colors.grey)),
+              trailing: const Icon(Icons.chevron_right, color: Colors.white24),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => AlbumDetailPage(album: album, songs: songs, artists: artists)),
+              ).then((_) => loadData()), // Refresh data when returning
             ),
           );
         },
