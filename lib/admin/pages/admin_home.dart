@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:project/admin/pages/manage_user_page.dart';
+import '../../services/audio_player_service.dart'; // Import your service
+import '../widgets/mini_player_buttom.dart'; // Import your player
 import 'dashboard_page.dart';
 import 'manage_songs_page.dart';
 import 'manage_artists_page.dart';
 import 'manage_albums_page.dart';
-
-
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
@@ -16,13 +16,19 @@ class AdminHomePage extends StatefulWidget {
 
 class _AdminHomePageState extends State<AdminHomePage> {
   int selectedIndex = 0;
+  int refreshCounter = 0;
 
-  final List<Widget> pages = const [
-    DashboardPage(),
-    ManageSongsPage(),
-    ManageArtistsPage(),
-    ManageAlbumsPage(),
-    ManageUsersPage(),
+  // Instance of the global audio service
+  final AudioPlayerService playerService = AudioPlayerService();
+
+  List<Widget> get pages => [
+    DashboardPage(key: selectedIndex == 0 ? ValueKey(refreshCounter) : null),
+    ManageSongsPage(key: selectedIndex == 1 ? ValueKey(refreshCounter) : null),
+    ManageArtistsPage(
+      key: selectedIndex == 2 ? ValueKey(refreshCounter) : null,
+    ),
+    ManageAlbumsPage(key: selectedIndex == 3 ? ValueKey(refreshCounter) : null),
+    ManageUsersPage(key: selectedIndex == 4 ? ValueKey(refreshCounter) : null),
   ];
 
   final List<String> titles = [
@@ -33,26 +39,36 @@ class _AdminHomePageState extends State<AdminHomePage> {
     'Users',
   ];
 
-  // Logic to handle logout
+  void _handleRefresh() {
+    setState(() => refreshCounter++);
+  }
+
   void _handleLogout() {
+    // Stop music on logout
+    playerService.stopAndClear();
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
         title: const Text("Logout", style: TextStyle(color: Colors.white)),
-        content: const Text("Are you sure you want to exit?", style: TextStyle(color: Colors.grey)),
+        content: const Text(
+          "Are you sure you want to exit?",
+          style: TextStyle(color: Colors.grey),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
-            onPressed: () {
-              // 1. Clear your session/token here (e.g., AuthService().logout())
-              // 2. Navigate to login and remove all previous routes
-              Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-            },
-            child: const Text("Logout", style: TextStyle(color: Colors.redAccent)),
+            onPressed: () => Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil('/login', (route) => false),
+            child: const Text(
+              "Logout",
+              style: TextStyle(color: Colors.redAccent),
+            ),
           ),
         ],
       ),
@@ -71,18 +87,28 @@ class _AdminHomePageState extends State<AdminHomePage> {
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
-          // Logout Button
+          IconButton(
+            onPressed: _handleRefresh,
+            icon: const Icon(Icons.refresh_rounded, color: Colors.grey),
+          ),
           IconButton(
             onPressed: _handleLogout,
             icon: const Icon(Icons.logout_rounded, color: Colors.grey),
-            tooltip: 'Logout',
           ),
           const SizedBox(width: 8),
         ],
       ),
-      body: pages[selectedIndex],
+      // --- THE PERSISTENT PLAYER LOGIC ---
+      body: Stack(
+        children: [
+          // The actual page content
+          pages[selectedIndex],
+
+          // The Mini Player anchored to the bottom
+          Positioned(bottom: 0, left: 0, right: 0, child: GlobalMiniPlayer()),
+        ],
+      ),
       bottomNavigationBar: Theme(
-        // Makes the background solid black without the white line/shadow
         data: Theme.of(context).copyWith(canvasColor: Colors.black),
         child: BottomNavigationBar(
           type: BottomNavigationBarType.fixed,
@@ -92,11 +118,26 @@ class _AdminHomePageState extends State<AdminHomePage> {
           currentIndex: selectedIndex,
           onTap: (index) => setState(() => selectedIndex = index),
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.grid_view_rounded), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.music_note_rounded), label: 'Songs'),
-            BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Artists'),
-            BottomNavigationBarItem(icon: Icon(Icons.album_rounded), label: 'Albums'),
-            BottomNavigationBarItem(icon: Icon(Icons.people_alt_rounded), label: 'Users'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.grid_view_rounded),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.music_note_rounded),
+              label: 'Songs',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_rounded),
+              label: 'Artists',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.album_rounded),
+              label: 'Albums',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.people_alt_rounded),
+              label: 'Users',
+            ),
           ],
         ),
       ),

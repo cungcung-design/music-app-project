@@ -728,22 +728,21 @@ class DatabaseService {
     });
   }
 
-  Future<void> updateSong({
-    required String id,
-    String? name,
-    String? artistId,
-    String? albumId,
-    String? audioUrl, // full URL or storage path
-  }) async {
+Future<void> updateSong({
+  required String id,
+  String? name,
+  String? artistId,
+  String? albumId,
+  String? audioUrl,
+}) async {
+  try {
     final Map<String, dynamic> data = {};
 
     if (name != null && name.isNotEmpty) data['name'] = name;
     if (artistId != null && artistId.isNotEmpty) data['artist_id'] = artistId;
     if (albumId != null && albumId.isNotEmpty) data['album_id'] = albumId;
 
-    // Handle audioUrl update: remove old audio if changing
     if (audioUrl != null && audioUrl.isNotEmpty) {
-      // Get current song to check old audioUrl
       final currentSong = await supabase
           .from('songs')
           .select('audio_url')
@@ -751,33 +750,23 @@ class DatabaseService {
           .maybeSingle();
 
       if (currentSong != null && currentSong['audio_url'] != null) {
-        final oldAudioUrl = currentSong['audio_url'] as String;
-        // If old audio is a storage path (not full URL), delete it
+        final String oldAudioUrl = currentSong['audio_url'];
+        
         if (!oldAudioUrl.startsWith('http')) {
-          try {
-            await supabase.storage.from('song_audio').remove([oldAudioUrl]);
-          } catch (e) {
-            print(
-              'Failed to delete old audio: $e',
-            ); // Log but don't fail update
-          }
+          await supabase.storage.from('song_audio').remove([oldAudioUrl]);
         }
       }
-
       data['audio_url'] = audioUrl;
     }
 
-    if (data.isEmpty) {
-      throw Exception("No data to update");
-    }
+    if (data.isEmpty) return;
 
-    final response = await supabase.from('songs').update(data).eq('id', id);
+    await supabase.from('songs').update(data).eq('id', id);
 
-    if (response.error != null) {
-      throw Exception("Update failed: ${response.error!.message}");
-    }
+  } catch (e) {
+    throw Exception("Update failed: $e");
   }
-
+}
   Future<void> deleteSong(String id) async {
     final song = await supabase
         .from('songs')

@@ -27,6 +27,8 @@ class AudioPlayerService extends ChangeNotifier {
   Song? currentSong;
   Duration? _cachedDuration;
   Duration _currentPosition = Duration.zero;
+  List<Song> _playlist = [];
+  int _currentIndex = -1;
 
   bool get isPlaying => _player.state == PlayerState.playing;
   Duration get position => _currentPosition;
@@ -68,10 +70,31 @@ class AudioPlayerService extends ChangeNotifier {
     _player.seek(position);
   }
 
-  // This is the key method for your close button
   Future<void> stopAndClear() async {
     await _player.stop();
     currentSong = null;
     notifyListeners();
+  }
+
+  // Alias for stopAndClear
+  Future<void> stop() async => stopAndClear();
+
+  void setPlaylist(List<Song> songs) {
+    _playlist = songs;
+    _currentIndex = -1;
+  }
+
+  Future<void> playNext() async {
+    if (_playlist.isEmpty) return;
+    _currentIndex = (_currentIndex + 1) % _playlist.length;
+    await playSong(_playlist[_currentIndex]);
+  }
+
+  Future<void> playPrevious() async {
+    if (_playlist.isEmpty) return;
+    _currentIndex = _currentIndex > 0
+        ? _currentIndex - 1
+        : _playlist.length - 1;
+    await playSong(_playlist[_currentIndex]);
   }
 }

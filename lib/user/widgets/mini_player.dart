@@ -43,82 +43,120 @@ class _MiniPlayerState extends State<MiniPlayer> {
         : 0.0;
 
     return Container(
-      color: Colors.grey[900],
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        border: const Border(
+          top: BorderSide(color: Colors.white10, width: 0.5),
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Artwork
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.grey[700],
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: Image.network(
-                song.albumImage ?? '',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    const Icon(Icons.music_note, color: Colors.white),
+          Row(
+            children: [
+              // Artwork
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Image.network(
+                    song.albumImage ?? '',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.music_note, color: Colors.white),
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(width: 12),
+              const SizedBox(width: 12),
 
-          // Song Details & Progress
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  song.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
-                  ),
+              // Song Details & Progress Label
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      song.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "${_formatDuration(service.position)} / ${_formatDuration(service.duration)}",
+                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                    ),
+                  ],
                 ),
-                Text(
-                  "${_formatDuration(service.position)} / ${_formatDuration(service.duration)}",
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-                const SizedBox(height: 4),
-                LinearProgressIndicator(
-                  value: progress.clamp(0.0, 1.0),
-                  backgroundColor: Colors.grey[800],
-                  valueColor: const AlwaysStoppedAnimation<Color>(
-                    Colors.greenAccent,
-                  ),
-                  minHeight: 3,
-                ),
-              ],
-            ),
-          ),
+              ),
 
-          // Play/Pause Button
-          IconButton(
-            icon: Icon(
-              service.isPlaying ? Icons.pause : Icons.play_arrow,
-              color: Colors.white,
-            ),
-            onPressed: () =>
-                service.isPlaying ? service.pause() : service.resume(),
-          ),
+              // --- CONTROLS ---
+              // Previous Button
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.skip_previous, color: Colors.white, size: 28),
+                onPressed: () => service.playPrevious(),
+              ),
+              
+              // Play/Pause Button
+              IconButton(
+                iconSize: 32,
+                icon: Icon(
+                  service.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                  color: Colors.greenAccent,
+                ),
+                onPressed: () =>
+                    service.isPlaying ? service.pause() : service.resume(),
+              ),
 
-          // CLOSE BUTTON
-          IconButton(
-            icon: const Icon(
-              Icons.close,
-              color: Color.fromARGB(255, 157, 44, 44),
+              // Next Button
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.skip_next, color: Colors.white, size: 28),
+                onPressed: () => service.playNext(),
+              ),
+
+              const SizedBox(width: 4),
+
+              // Close Button
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(
+                  Icons.close,
+                  color: Colors.grey,
+                  size: 20,
+                ),
+                onPressed: () => service.stopAndClear(),
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+          
+          // --- PROGRESS BAR ---
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: LinearProgressIndicator(
+              value: progress.clamp(0.0, 1.0),
+              backgroundColor: Colors.white10,
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                Colors.greenAccent,
+              ),
+              minHeight: 2,
             ),
-            onPressed: () {
-              // Calls your new method to stop audio and hide this UI
-              service.stopAndClear();
-            },
           ),
         ],
       ),

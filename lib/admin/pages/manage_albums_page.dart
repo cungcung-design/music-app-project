@@ -127,15 +127,15 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
           );
 
           return Container(
-            margin: const EdgeInsets.only(bottom: 12),
+            margin: const EdgeInsets.only(bottom: 8),
             decoration: BoxDecoration(
               color: Colors.grey[900],
               borderRadius: BorderRadius.circular(12),
             ),
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 8,
+                horizontal: 14,
+                vertical: 4,
               ),
               leading: Hero(
                 tag: 'album-${album.id}',
@@ -143,8 +143,8 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
                   borderRadius: BorderRadius.circular(8),
                   child: Image.network(
                     album.albumProfileUrl ?? '',
-                    width: 50,
-                    height: 50,
+                    width: 60,
+                    height: 60,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) =>
                         const Icon(Icons.album, color: Colors.green, size: 50),

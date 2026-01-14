@@ -1,2 +1,4 @@
-- Fix bug in \_fetchSongDuration method: Correct assignment of duration to \_songDurations map.
-- Add duration text line to \_buildMiniPlayer method in the Column widget.
+- [x] Integrate GlobalMiniPlayer into AdminHomePage for global access in admin section
+  - [x] Add import for GlobalMiniPlayer in admin_home.dart
+  - [x] Modify the body to use a Stack with pages[selectedIndex] and Positioned GlobalMiniPlayer at the bottom
+  - [x] Ensure bottomNavigationBar remains functional
