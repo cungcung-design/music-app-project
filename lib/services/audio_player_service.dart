@@ -11,7 +11,7 @@ class AudioPlayerService extends ChangeNotifier {
     _player.onPlayerStateChanged.listen((_) {
       notifyListeners();
     });
-    // Also listen to position changes so the progress bar moves
+
     _player.onPositionChanged.listen((_) {
       notifyListeners();
     });
@@ -22,24 +22,35 @@ class AudioPlayerService extends ChangeNotifier {
 
   bool get isPlaying => _player.state == PlayerState.playing;
   Duration get position => Duration.zero;
-  Duration get duration =>
-      Duration.zero; 
+  Duration get duration => _cachedDuration ?? Duration.zero;
+  Future<Duration> getDuration() async {
+    return await _player.getDuration() ?? Duration.zero;
+  }
+
   Future<void> playSong(Song song) async {
-    if (currentSong?.id != song.id) {
-      await _player.setSourceUrl(song.audioUrl!);
-      currentSong = song;
+    try {
+      if (currentSong?.id != song.id) {
+        await _player.stop();
+        await _player.setSourceUrl(song.audioUrl!);
+        // Cache the duration
+        _cachedDuration = await _player.getDuration();
+        currentSong = song;
+      }
+      await _player.resume();
+      notifyListeners();
+    } catch (e) {
+      print('Error playing song: $e');
+      // Optionally, show a toast or handle the error
     }
+  }
+
+  Future<void> pause() async {
+    await _player.pause();
+    notifyListeners();
+  }
+
+  Future<void> resume() async {
     await _player.resume();
-    notifyListeners();
-  }
-
-  void pause() {
-    _player.pause();
-    notifyListeners();
-  }
-
-  void resume() {
-    _player.resume();
     notifyListeners();
   }
 

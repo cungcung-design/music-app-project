@@ -137,12 +137,7 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(title: const Text("Manage Albums"), backgroundColor: Colors.black, elevation: 0),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.green,
-        onPressed: () => showAlbumForm(),
-        child: const Icon(Icons.add, color: Colors.black),
-      ),
+      
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: albums.length,

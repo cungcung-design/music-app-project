@@ -7,6 +7,7 @@ class Song {
   final String? artistName;
   final String? albumImage;
   final int? playCount;
+  final Duration? duration;
 
   Song({
     required this.id,
@@ -17,6 +18,7 @@ class Song {
     this.artistName,
     this.albumImage,
     this.playCount,
+    this.duration,
   });
 
   /// Convert DB map into Song object
@@ -64,6 +66,7 @@ class Song {
     String? artistName,
     String? albumImage,
     int? playCount,
+    Duration? duration,
   }) {
     return Song(
       id: id ?? this.id,
@@ -74,6 +77,7 @@ class Song {
       artistName: artistName ?? this.artistName,
       albumImage: albumImage ?? this.albumImage,
       playCount: playCount ?? this.playCount,
+      duration: duration ?? this.duration,
     );
   }
 }
