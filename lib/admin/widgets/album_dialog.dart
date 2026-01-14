@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import '../../services/database_service.dart';
 import '../../models/album.dart';
 import '../../models/artist.dart';
+import '../../utils/toast.dart';
 
 class AlbumDialog extends StatefulWidget {
   final DatabaseService db;
@@ -221,24 +222,42 @@ class _AlbumDialogState extends State<AlbumDialog> {
           style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
           onPressed: () async {
             if (_formKey.currentState!.validate()) {
-              if (widget.album == null) {
-                await widget.db.addAlbum(
-                  name: nameController.text,
-                  artistId: selectedArtistId!,
-                  coverFile: selectedCoverFile,
-                  coverBytes: selectedCoverBytes,
-                );
-              } else {
-                await widget.db.updateAlbum(
-                  albumId: widget.album!.id,
-                  name: nameController.text,
-                  artistId: selectedArtistId!,
-                  newCoverFile: selectedCoverFile,
-                  newCoverBytes: selectedCoverBytes,
-                  removeCurrentCover: removeCurrentCover,
+              try {
+                if (widget.album == null) {
+                  await widget.db.addAlbum(
+                    name: nameController.text,
+                    artistId: selectedArtistId!,
+                    coverFile: selectedCoverFile,
+                    coverBytes: selectedCoverBytes,
+                  );
+                  showToast(
+                    context,
+                    'Album added successfully',
+                    isError: false,
+                  );
+                } else {
+                  await widget.db.updateAlbum(
+                    albumId: widget.album!.id,
+                    name: nameController.text,
+                    artistId: selectedArtistId!,
+                    newCoverFile: selectedCoverFile,
+                    newCoverBytes: selectedCoverBytes,
+                    removeCurrentCover: removeCurrentCover,
+                  );
+                  showToast(
+                    context,
+                    'Album updated successfully',
+                    isError: false,
+                  );
+                }
+                Navigator.pop(context, true);
+              } catch (e) {
+                showToast(
+                  context,
+                  'Failed to ${widget.album == null ? "add" : "update"} album: $e',
+                  isError: true,
                 );
               }
-              Navigator.pop(context, true);
             }
           },
           child: Text(widget.album == null ? "Add" : "Update"),

@@ -164,14 +164,17 @@ class _NowPlayingPageState extends State<NowPlayingPage>
             child: Column(
               children: [
                 Slider(
-                  value: position.inMilliseconds.toDouble().clamp(
-                    0.0,
-                    duration.inMilliseconds.toDouble() == 0
-                        ? 1
-                        : duration.inMilliseconds.toDouble(),
-                  ),
+                  value: position.inMilliseconds
+                      .toDouble()
+                      .clamp(
+                        0.0,
+                        duration.inMilliseconds.toDouble() == 0
+                            ? 1.0
+                            : duration.inMilliseconds.toDouble(),
+                      )
+                      .toDouble(),
                   max: duration.inMilliseconds.toDouble() == 0
-                      ? 1
+                      ? 1.0
                       : duration.inMilliseconds.toDouble(),
                   activeColor: Colors.greenAccent,
                   inactiveColor: Colors.grey[700],

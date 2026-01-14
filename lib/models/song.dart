@@ -8,6 +8,7 @@ class Song {
   final String? albumImage;
   final int? playCount;
   final Duration? duration;
+  final int order;
 
   Song({
     required this.id,
@@ -19,6 +20,7 @@ class Song {
     this.albumImage,
     this.playCount,
     this.duration,
+    this.order = 0,
   });
 
   /// Convert DB map into Song object
@@ -67,6 +69,7 @@ class Song {
     String? albumImage,
     int? playCount,
     Duration? duration,
+    int? order,
   }) {
     return Song(
       id: id ?? this.id,
@@ -78,6 +81,7 @@ class Song {
       albumImage: albumImage ?? this.albumImage,
       playCount: playCount ?? this.playCount,
       duration: duration ?? this.duration,
+      order: order ?? this.order,
     );
   }
 }

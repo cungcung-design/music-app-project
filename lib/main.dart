@@ -79,7 +79,7 @@ class _MyAppState extends State<MyApp> {
     // Step 3: Normal logged-in user → UserHomePage
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: AdminHomePage(),
+      home: UserHomePage(),
     );
   }
 }

@@ -12,17 +12,27 @@ class AudioPlayerService extends ChangeNotifier {
       notifyListeners();
     });
 
-    _player.onPositionChanged.listen((_) {
+    _player.onPositionChanged.listen((pos) {
+      _currentPosition = pos;
+      notifyListeners();
+    });
+
+    _player.onDurationChanged.listen((dur) {
+      _cachedDuration = dur;
       notifyListeners();
     });
   }
 
   final AudioPlayer _player = AudioPlayer();
   Song? currentSong;
+  Duration? _cachedDuration;
+  Duration _currentPosition = Duration.zero;
 
   bool get isPlaying => _player.state == PlayerState.playing;
-  Duration get position => Duration.zero;
+  Duration get position => _currentPosition;
   Duration get duration => _cachedDuration ?? Duration.zero;
+
+  AudioPlayer get player => _player;
   Future<Duration> getDuration() async {
     return await _player.getDuration() ?? Duration.zero;
   }

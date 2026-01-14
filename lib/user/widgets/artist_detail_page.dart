@@ -33,28 +33,33 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[900],
-      appBar: AppBar(
-        backgroundColor: Colors.grey[850],
-        title: Text(widget.artist.name),
-      ),
+      backgroundColor: const Color.fromARGB(255, 5, 5, 5),
+appBar: AppBar(
+  backgroundColor: const Color.fromARGB(255, 9, 9, 9),
+  leading: IconButton(
+    icon: const Icon(Icons.arrow_back, color: Colors.white),
+    onPressed: () {
+      Navigator.pop(context);
+    },
+  ),
+),
 
       body: Stack(
         children: [
-          // MAIN CONTENT
+        
           Padding(
-            padding: const EdgeInsets.only(bottom: 90), // space for MiniPlayer
+            padding: const EdgeInsets.only(bottom: 90), // space 
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ARTIST HEADER
+                  
                   Row(
                     children: [
                       CircleAvatar(
                         radius: 50,
-                        backgroundColor: Colors.grey[700],
+                        backgroundColor: const Color.fromARGB(255, 5, 5, 5),
                         child: ClipOval(
                           child: Image.network(
                             widget.artist.artistProfileUrl ?? '',

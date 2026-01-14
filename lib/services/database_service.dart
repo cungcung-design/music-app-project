@@ -606,7 +606,7 @@ class DatabaseService {
   }
 
   Future<List<Song>> getSongsWithDetails() async {
-    final res = await supabase.from('songs').select();
+    final res = await supabase.from('songs').select().order('id');
     final data = List<Map<String, dynamic>>.from(res);
     final albumMap = await getAlbumCoverMap();
     final artistMap = Map<String, String>.fromEntries(
@@ -614,7 +614,9 @@ class DatabaseService {
         (e) => MapEntry(e['id'].toString(), e['name'].toString()),
       ),
     );
-    return data.map((e) {
+    return data.asMap().entries.map((entry) {
+      final index = entry.key;
+      final e = entry.value;
       final audioUrl = resolveUrl(
         supabase: supabase,
         bucket: 'song_audio',
@@ -632,6 +634,7 @@ class DatabaseService {
         audioUrl: audioUrl,
         albumImage: albumImage,
         artistName: artistName,
+        order: index,
       );
     }).toList();
   }

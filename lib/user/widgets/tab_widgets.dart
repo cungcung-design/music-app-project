@@ -98,7 +98,7 @@ class _SuggestedTabState extends State<SuggestedTab> {
               const SizedBox(height: 12),
               _songList(data.recentlyPlayed),
               const SizedBox(height: 24),
-              _sectionTitle('Recommended For You'),
+              _sectionTitle('Popular Songs'),
               const SizedBox(height: 12),
               _songList(data.recommended),
               const SizedBox(height: 24),
