@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../models/song.dart';
 import 'section_title.dart';
@@ -19,7 +20,6 @@ class PopularSection extends StatefulWidget {
 class _PopularSectionState extends State<PopularSection> {
   @override
   Widget build(BuildContext context) {
-    // If no songs are provided, hide the section entirely
     if (widget.songs.isEmpty) {
       return const SizedBox();
     }
@@ -30,10 +30,10 @@ class _PopularSectionState extends State<PopularSection> {
         const SectionTitle('Popular Songs'),
         const SizedBox(height: 12),
         SizedBox(
-          height: 185, 
+          height: 185,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: widget.songs.length,
+            itemCount: min(widget.songs.length, 5),
             padding: const EdgeInsets.symmetric(horizontal: 16),
             separatorBuilder: (context, index) => const SizedBox(width: 12),
             itemBuilder: (context, index) {

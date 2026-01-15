@@ -30,12 +30,12 @@ class _SuggestedTabState extends State<SuggestedTab> {
 
   Future<SuggestedData> fetchData() async {
     final artists = await widget.db.getArtists();
-    List<Song> recommendedSongs = [];
+    List<Song> popularSongs = [];
 
     if (userId != null) {
-      recommendedSongs = await widget.db.getRecommendedSongs(
+      popularSongs = await widget.db.getRecommendedSongs(
         userId!,
-        limit: 10,
+        limit: 5,
       );
     }
 
@@ -45,7 +45,7 @@ class _SuggestedTabState extends State<SuggestedTab> {
 
     return SuggestedData(
       recentlyPlayed: recentlyPlayed,
-      recommended: recommendedSongs,
+      popularSongs: popularSongs,
       artists: artists,
     );
   }
@@ -100,7 +100,7 @@ class _SuggestedTabState extends State<SuggestedTab> {
               const SizedBox(height: 24),
               _sectionTitle('Popular Songs'),
               const SizedBox(height: 12),
-              _songList(data.recommended),
+              _songList(data.popularSongs),
               const SizedBox(height: 24),
               _sectionTitle('Artists'),
               const SizedBox(height: 12),
@@ -161,23 +161,23 @@ class _SuggestedTabState extends State<SuggestedTab> {
                     ),
                     child:
                         song.albumImage != null && song.albumImage!.isNotEmpty
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              song.albumImage ?? '',
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  song.albumImage ?? '',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.music_note,
+                                    color: Colors.white,
+                                    size: 40,
+                                  ),
+                                ),
+                              )
+                            : const Icon(
                                 Icons.music_note,
                                 color: Colors.white,
                                 size: 40,
                               ),
-                            ),
-                          )
-                        : const Icon(
-                            Icons.music_note,
-                            color: Colors.white,
-                            size: 40,
-                          ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -499,8 +499,7 @@ class AlbumsTab extends StatelessWidget {
                 width: 48,
                 height: 48,
                 color: Colors.grey[700],
-                child:
-                    album.albumProfileUrl != null &&
+                child: album.albumProfileUrl != null &&
                         album.albumProfileUrl!.isNotEmpty
                     ? Image.network(album.albumProfileUrl!, fit: BoxFit.cover)
                     : const Icon(Icons.album, color: Colors.white),

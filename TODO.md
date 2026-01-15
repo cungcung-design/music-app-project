@@ -1,4 +1,3 @@
-- [x] Integrate GlobalMiniPlayer into AdminHomePage for global access in admin section
-  - [x] Add import for GlobalMiniPlayer in admin_home.dart
-  - [x] Modify the body to use a Stack with pages[selectedIndex] and Positioned GlobalMiniPlayer at the bottom
-  - [x] Ensure bottomNavigationBar remains functional
+- [x] Add import 'dart:math' to popular_section.dart
+- [x] Change itemCount in ListView to min(widget.songs.length, 5)
+- [x] Change limit in tab_widgets.dart to 5

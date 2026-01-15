@@ -82,11 +82,8 @@ class DatabaseService {
   // -------------------- PROFILE --------------------
   Future<Profile?> getProfile(String userId) async {
     print('getProfile: fetching profile for userId = $userId');
-    final data = await supabase
-        .from('profiles')
-        .select()
-        .eq('id', userId)
-        .maybeSingle();
+    final data =
+        await supabase.from('profiles').select().eq('id', userId).maybeSingle();
 
     print('getProfile: data received = $data');
     if (data != null) {
@@ -177,9 +174,7 @@ class DatabaseService {
     }
 
     // 2️⃣ Upload new avatar
-    await supabase.storage
-        .from('profiles')
-        .upload(
+    await supabase.storage.from('profiles').upload(
           path,
           file,
           fileOptions: const FileOptions(
@@ -279,9 +274,7 @@ class DatabaseService {
     if (imageBytes != null) {
       final path =
           'artist_${DateTime.now().millisecondsSinceEpoch}.${contentType == 'image/jpeg' ? 'jpg' : 'png'}';
-      await supabase.storage
-          .from('artist_profiles')
-          .uploadBinary(
+      await supabase.storage.from('artist_profiles').uploadBinary(
             path,
             imageBytes,
             fileOptions: FileOptions(
@@ -317,9 +310,7 @@ class DatabaseService {
     if (newImageBytes != null) {
       final path =
           'artist_${DateTime.now().millisecondsSinceEpoch}.${contentType == 'image/jpeg' ? 'jpg' : 'png'}';
-      await supabase.storage
-          .from('artist_profiles')
-          .uploadBinary(
+      await supabase.storage.from('artist_profiles').uploadBinary(
             path,
             newImageBytes,
             fileOptions: FileOptions(
@@ -327,9 +318,8 @@ class DatabaseService {
               contentType: contentType ?? 'image/png',
             ),
           );
-      updateData['artist_url'] = supabase.storage
-          .from('artist_profiles')
-          .getPublicUrl(path);
+      updateData['artist_url'] =
+          supabase.storage.from('artist_profiles').getPublicUrl(path);
     }
 
     await supabase.from('artists').update(updateData).eq('id', artistId);
@@ -361,9 +351,8 @@ class DatabaseService {
   // ================= STORAGE ALBUMS =================
 
   Future<List<Album>> fetchAlbumsFromStorage() async {
-    final files = await supabase.storage
-        .from('album_covers')
-        .list(path: 'albums');
+    final files =
+        await supabase.storage.from('album_covers').list(path: 'albums');
 
     return files.map((file) {
       final url = supabase.storage
@@ -388,9 +377,7 @@ class DatabaseService {
       // Mobile
       final fileName = 'album_${DateTime.now().millisecondsSinceEpoch}.png';
       albumPath = 'albums/$fileName';
-      await supabase.storage
-          .from('album_covers')
-          .upload(
+      await supabase.storage.from('album_covers').upload(
             albumPath,
             coverFile,
             fileOptions: const FileOptions(
@@ -402,9 +389,7 @@ class DatabaseService {
       // Web
       final fileName = 'album_${DateTime.now().millisecondsSinceEpoch}.png';
       albumPath = 'albums/$fileName';
-      await supabase.storage
-          .from('album_covers')
-          .uploadBinary(
+      await supabase.storage.from('album_covers').uploadBinary(
             albumPath,
             coverBytes,
             fileOptions: const FileOptions(
@@ -463,9 +448,7 @@ class DatabaseService {
       final fileName = 'album_${DateTime.now().millisecondsSinceEpoch}.png';
       final path = 'albums/$fileName';
 
-      await supabase.storage
-          .from('album_covers')
-          .upload(
+      await supabase.storage.from('album_covers').upload(
             path,
             newCoverFile,
             fileOptions: const FileOptions(
@@ -489,9 +472,7 @@ class DatabaseService {
       final fileName = 'album_${DateTime.now().millisecondsSinceEpoch}.png';
       final path = 'albums/$fileName';
 
-      await supabase.storage
-          .from('album_covers')
-          .uploadBinary(
+      await supabase.storage.from('album_covers').uploadBinary(
             path,
             newCoverBytes,
             fileOptions: const FileOptions(
@@ -523,10 +504,8 @@ class DatabaseService {
   }
 
   Future<List<Album>> getAlbumsByArtist(String artistId) async {
-    final res = await supabase
-        .from('albums')
-        .select()
-        .eq('artist_id', artistId);
+    final res =
+        await supabase.from('albums').select().eq('artist_id', artistId);
     return List<Map<String, dynamic>>.from(
       res,
     ).map((e) => Album.fromMap(e, supabase: supabase)).toList();
@@ -588,21 +567,16 @@ class DatabaseService {
 
     const audioExtensions = ['mp3', 'wav', 'm4a', 'ogg', 'aac', 'flac'];
 
-    return files
-        .where((file) {
-          final ext = file.name.split('.').last.toLowerCase();
-          return audioExtensions.contains(ext);
-        })
-        .map((file) {
-          final url = supabase.storage
-              .from('song_audio')
-              .getPublicUrl(file.name);
+    return files.where((file) {
+      final ext = file.name.split('.').last.toLowerCase();
+      return audioExtensions.contains(ext);
+    }).map((file) {
+      final url = supabase.storage.from('song_audio').getPublicUrl(file.name);
 
-          final id = file.name.substring(0, file.name.lastIndexOf('.'));
+      final id = file.name.substring(0, file.name.lastIndexOf('.'));
 
-          return StorageSong(id: id, name: id, url: url);
-        })
-        .toList();
+      return StorageSong(id: id, name: id, url: url);
+    }).toList();
   }
 
   Future<List<Song>> getSongsWithDetails() async {
@@ -682,8 +656,7 @@ class DatabaseService {
       throw Exception('Either file or bytes must be provided');
     }
 
-    final baseFileName =
-        fileName ??
+    final baseFileName = fileName ??
         (file != null
             ? p.basename(file.path)
             : 'audio_${DateTime.now().millisecondsSinceEpoch}.mp3');
@@ -692,17 +665,13 @@ class DatabaseService {
         '${DateTime.now().millisecondsSinceEpoch}_$baseFileName';
 
     if (file != null) {
-      await supabase.storage
-          .from('song_audio')
-          .upload(
+      await supabase.storage.from('song_audio').upload(
             storageFileName,
             file,
             fileOptions: const FileOptions(upsert: true),
           );
     } else {
-      await supabase.storage
-          .from('song_audio')
-          .uploadBinary(
+      await supabase.storage.from('song_audio').uploadBinary(
             storageFileName,
             bytes!,
             fileOptions: const FileOptions(upsert: true),
@@ -728,45 +697,45 @@ class DatabaseService {
     });
   }
 
-Future<void> updateSong({
-  required String id,
-  String? name,
-  String? artistId,
-  String? albumId,
-  String? audioUrl,
-}) async {
-  try {
-    final Map<String, dynamic> data = {};
+  Future<void> updateSong({
+    required String id,
+    String? name,
+    String? artistId,
+    String? albumId,
+    String? audioUrl,
+  }) async {
+    try {
+      final Map<String, dynamic> data = {};
 
-    if (name != null && name.isNotEmpty) data['name'] = name;
-    if (artistId != null && artistId.isNotEmpty) data['artist_id'] = artistId;
-    if (albumId != null && albumId.isNotEmpty) data['album_id'] = albumId;
+      if (name != null && name.isNotEmpty) data['name'] = name;
+      if (artistId != null && artistId.isNotEmpty) data['artist_id'] = artistId;
+      if (albumId != null && albumId.isNotEmpty) data['album_id'] = albumId;
 
-    if (audioUrl != null && audioUrl.isNotEmpty) {
-      final currentSong = await supabase
-          .from('songs')
-          .select('audio_url')
-          .eq('id', id)
-          .maybeSingle();
+      if (audioUrl != null && audioUrl.isNotEmpty) {
+        final currentSong = await supabase
+            .from('songs')
+            .select('audio_url')
+            .eq('id', id)
+            .maybeSingle();
 
-      if (currentSong != null && currentSong['audio_url'] != null) {
-        final String oldAudioUrl = currentSong['audio_url'];
-        
-        if (!oldAudioUrl.startsWith('http')) {
-          await supabase.storage.from('song_audio').remove([oldAudioUrl]);
+        if (currentSong != null && currentSong['audio_url'] != null) {
+          final String oldAudioUrl = currentSong['audio_url'];
+
+          if (!oldAudioUrl.startsWith('http')) {
+            await supabase.storage.from('song_audio').remove([oldAudioUrl]);
+          }
         }
+        data['audio_url'] = audioUrl;
       }
-      data['audio_url'] = audioUrl;
+
+      if (data.isEmpty) return;
+
+      await supabase.from('songs').update(data).eq('id', id);
+    } catch (e) {
+      throw Exception("Update failed: $e");
     }
-
-    if (data.isEmpty) return;
-
-    await supabase.from('songs').update(data).eq('id', id);
-
-  } catch (e) {
-    throw Exception("Update failed: $e");
   }
-}
+
   Future<void> deleteSong(String id) async {
     final song = await supabase
         .from('songs')
@@ -803,9 +772,7 @@ Future<void> updateSong({
 
     final newPath = '${DateTime.now().millisecondsSinceEpoch}_$fileName';
 
-    await supabase.storage
-        .from('song_audio')
-        .uploadBinary(
+    await supabase.storage.from('song_audio').uploadBinary(
           newPath,
           newBytes,
           fileOptions: const FileOptions(upsert: true),
@@ -814,8 +781,7 @@ Future<void> updateSong({
     // 4️⃣ Update DB
     await supabase
         .from('songs')
-        .update({'audio_url': newPath})
-        .eq('id', songId);
+        .update({'audio_url': newPath}).eq('id', songId);
 
     return newPath;
   }
@@ -934,7 +900,7 @@ Future<void> updateSong({
   }
 
   // -------------------- POPULAR SONGS --------------------
-  Future<List<Song>> getPopularSongs({int limit = 10}) async {
+  Future<List<Song>> getPopularSongs({int limit = 5}) async {
     final songsRes = await supabase
         .from('songs')
         .select()
@@ -1025,10 +991,8 @@ Future<void> updateSong({
     final storageSongs = await fetchSongsFromStorage();
     final dbSongs = await getSongs();
 
-    final dbSongUrls = dbSongs
-        .map((s) => s.audioUrl)
-        .where((url) => url != null)
-        .toSet();
+    final dbSongUrls =
+        dbSongs.map((s) => s.audioUrl).where((url) => url != null).toSet();
 
     return storageSongs
         .where((storageSong) => !dbSongUrls.contains(storageSong.url))

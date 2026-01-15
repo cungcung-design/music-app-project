@@ -42,11 +42,11 @@ class _SuggestedPageState extends State<SuggestedPage> {
       (a, b) => (b.playCount ?? 0).compareTo(a.playCount ?? 0),
     );
 
-    final popularSongs = await widget.db.getPopularSongs(limit: 10);
+    final popularSongs = await widget.db.getPopularSongs(limit: 5);
 
     return SuggestedData(
       recentlyPlayed: allSongs.take(5).toList(),
-      recommended: popularSongs,
+      popularSongs: popularSongs,
       artists: artists,
     );
   }
@@ -102,11 +102,12 @@ class _SuggestedPageState extends State<SuggestedPage> {
               const SizedBox(height: 24),
               _sectionTitle('Popular Songs'),
               PopularSection(
-                songs: data.recommended,
+                songs: data.popularSongs,
                 onSongTap: _playSong,
               ),
 
-              const SizedBox(height: 80), // space for MiniPlayer (handled outside)
+              const SizedBox(
+                  height: 80), // space for MiniPlayer (handled outside)
             ],
           ),
         );
@@ -158,17 +159,14 @@ class _SuggestedPageState extends State<SuggestedPage> {
                                   fit: BoxFit.cover,
                                 ),
                               )
-                            : const Icon(Icons.music_note,
-                                color: Colors.white),
+                            : const Icon(Icons.music_note, color: Colors.white),
                       ),
                       Positioned(
                         top: 6,
                         right: 6,
                         child: IconButton(
                           icon: Icon(
-                            isFavorite
-                                ? Icons.favorite
-                                : Icons.favorite_border,
+                            isFavorite ? Icons.favorite : Icons.favorite_border,
                             color: isFavorite ? Colors.red : Colors.white,
                           ),
                           onPressed: () => _toggleFavorite(song),
@@ -177,8 +175,7 @@ class _SuggestedPageState extends State<SuggestedPage> {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text(song.name,
-                      style: const TextStyle(color: Colors.white)),
+                  Text(song.name, style: const TextStyle(color: Colors.white)),
                 ],
               ),
             ),

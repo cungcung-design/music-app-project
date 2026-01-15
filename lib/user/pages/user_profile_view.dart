@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../../services/database_service.dart';
 import '../../models/profile.dart';
 import 'edit_profile_page.dart';
@@ -19,6 +22,56 @@ class _UserProfileViewDetail extends State<UserProfileViewDetail> {
     final user = db.currentUser;
     if (user == null) return null;
     return await db.getProfile(user.id);
+  }
+
+  // Image update logic
+  Future<void> _updateProfileImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+      if (image == null) return;
+
+      final user = db.currentUser;
+      if (user == null) return;
+
+      // Generate unique filename
+      final String fileName =
+          'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final String filePath = 'user_avatars/${user.id}/$fileName';
+
+      // Upload to Supabase Storage
+      final bytes = await image.readAsBytes();
+      await Supabase.instance.client.storage.from('avatars').uploadBinary(
+          filePath, bytes,
+          fileOptions: const FileOptions(upsert: true));
+
+      // Get public URL
+      final String publicUrl = Supabase.instance.client.storage
+          .from('avatars')
+          .getPublicUrl(filePath);
+
+      // Update profile in database
+      await Supabase.instance.client
+          .from('profiles')
+          .update({'avatar_url': publicUrl}).eq('id', user.id);
+
+      // Refresh UI
+      setState(() {});
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile image updated successfully!')),
+        );
+      }
+    } catch (e) {
+      print('Error updating profile image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update profile image: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -47,7 +100,7 @@ class _UserProfileViewDetail extends State<UserProfileViewDetail> {
               );
 
               if (updated == true) {
-                setState(() {}); 
+                setState(() {});
               }
             },
           )
@@ -67,22 +120,48 @@ class _UserProfileViewDetail extends State<UserProfileViewDetail> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
             child: Column(
               children: [
-                // 1. Profile Picture Section
                 const SizedBox(height: 20),
                 Center(
-                  child: CircleAvatar(
-                    radius: 65,
-                    backgroundColor: Colors.grey[900],
-                    backgroundImage: (profile?.avatarUrl != null &&
-                            profile!.avatarUrl!.isNotEmpty)
-                        ? NetworkImage(
-                            "${profile.avatarUrl}?v=${DateTime.now().millisecondsSinceEpoch}")
-                        : null,
-                    child: (profile?.avatarUrl == null ||
-                            profile!.avatarUrl!.isEmpty)
-                        ? const Icon(Icons.person,
-                            size: 70, color: Colors.white70)
-                        : null,
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 65,
+                        backgroundColor: Colors.grey[900],
+                        backgroundImage: (profile?.avatarUrl != null &&
+                                profile!.avatarUrl!.isNotEmpty)
+                            ? NetworkImage(
+                                "${profile.avatarUrl}?v=${DateTime.now().millisecondsSinceEpoch}")
+                            : null,
+                        child: (profile?.avatarUrl == null ||
+                                profile!.avatarUrl!.isEmpty)
+                            ? const Icon(Icons.person,
+                                size: 70, color: Colors.white70)
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: _updateProfileImage,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.black, // Makes it pop
+                                width: 3,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 15),
@@ -105,12 +184,12 @@ class _UserProfileViewDetail extends State<UserProfileViewDetail> {
                       : 'Not set',
                 ),
                 _profileItem("Country", profile?.country ?? 'Not set'),
-                
-                // Add a simple Logout option at the bottom
+
                 const SizedBox(height: 20),
                 ListTile(
                   leading: const Icon(Icons.logout, color: Colors.redAccent),
-                  title: const Text("Log Out", style: TextStyle(color: Colors.redAccent)),
+                  title: const Text("Log Out",
+                      style: TextStyle(color: Colors.redAccent)),
                   onTap: () {
                     // Add your logout logic here
                   },

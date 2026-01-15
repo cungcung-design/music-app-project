@@ -7,7 +7,7 @@ import 'user/pages/user_profile_page.dart';
 import 'user/pages/user_profile_view.dart';
 import 'user/widgets/mini_player.dart';
 import 'user/widgets/tab_widgets.dart';
-import 'models/profile.dart'; // Import your profile model
+import 'models/profile.dart';
 
 class UserHomePage extends StatefulWidget {
   const UserHomePage({Key? key}) : super(key: key);
@@ -17,7 +17,6 @@ class UserHomePage extends StatefulWidget {
 }
 
 class _UserHomePageState extends State<UserHomePage> {
-  int selectedIndex = 0;
   int selectedBottomIndex = 0;
   final DatabaseService db = DatabaseService();
 
@@ -40,66 +39,76 @@ class _UserHomePageState extends State<UserHomePage> {
       length: 4,
       child: Scaffold(
         backgroundColor: Colors.black,
+
         appBar: selectedBottomIndex == 0
             ? AppBar(
-                backgroundColor: Colors.black,
+                backgroundColor: const Color.fromARGB(255, 7, 7, 7),
                 elevation: 0,
                 centerTitle: false,
-                leadingWidth: 100, 
-                leading: Row(
-                  children: [
-                    const SizedBox(width: 12),
-                    // --- USER PROFILE PIC ---
-                    FutureBuilder<Profile?>(
-                      future: db.getProfile(db.currentUser?.id ?? ''),
-                      builder: (context, snapshot) {
-                        final profile = snapshot.data;
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const UserProfileViewDetail(),
-                              ),
-                            ).then(
-                              (value) => setState(() {}),
-                            ); // Refresh if updated
-                          },
-                          child: CircleAvatar(
-                            radius: 16,
-                            backgroundColor: Colors.grey[900],
-                            backgroundImage:
-                                (profile?.avatarUrl != null &&
+                leadingWidth: 60,
+                titleSpacing: 0,
+
+                leading: Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: FutureBuilder<Profile?>(
+                    future: db.getProfile(db.currentUser?.id ?? ''),
+                    builder: (context, snapshot) {
+                      final profile = snapshot.data;
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const UserProfileViewDetail(),
+                            ),
+                          ).then((_) => setState(() {}));
+                        },
+                        child: ClipOval(
+                          child: Container(
+                           
+                            color: Colors.grey[900],
+                            child: (profile?.avatarUrl != null &&
                                     profile!.avatarUrl!.isNotEmpty)
-                                ? NetworkImage(profile.avatarUrl!)
-                                : null,
-                            child: (profile?.avatarUrl == null)
-                                ? const Icon(
-                                    Icons.person,
-                                    size: 16,
-                                    color: Colors.white,
+                                ? Image.network(
+                                    profile.avatarUrl!,
+                                    fit: BoxFit.cover,
                                   )
-                                : null,
+                                : const Icon(
+                                    Icons.person,
+                                    size: 30,
+                                    color: Colors.white,
+                                  ),
                           ),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 12),
-                    const Icon(Icons.music_note, color: Colors.green, size: 28),
-                  ],
-                ),
-                title: const Text(
-                  'Spotify',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    },
                   ),
                 ),
+                title: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(
+                      Icons.music_note,
+                      color: Colors.green,
+                      size: 40,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'Spotify',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 26,
+                      ),
+                    ),
+                  ],
+                ),
+
+                /// TAB BAR
                 bottom: const TabBar(
                   indicatorColor: Colors.green,
                   labelColor: Colors.green,
                   unselectedLabelColor: Colors.grey,
-                  isScrollable: false,
                   tabs: [
                     Tab(text: 'Suggested'),
                     Tab(text: 'Songs'),
@@ -109,6 +118,8 @@ class _UserHomePageState extends State<UserHomePage> {
                 ),
               )
             : null,
+
+        /// BODY
         body: IndexedStack(
           index: selectedBottomIndex,
           children: [
@@ -128,11 +139,13 @@ class _UserHomePageState extends State<UserHomePage> {
                 ),
               ],
             ),
-            Container(color: Colors.black, child: _pages[1]),
-            Container(color: Colors.black, child: _pages[2]),
-            Container(color: Colors.black, child: _pages[3]),
+            _pages[1],
+            _pages[2],
+            _pages[3],
           ],
         ),
+
+        /// BOTTOM NAVIGATION
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: selectedBottomIndex,
           onTap: (index) {
@@ -140,18 +153,27 @@ class _UserHomePageState extends State<UserHomePage> {
               selectedBottomIndex = index;
             });
           },
-          type: BottomNavigationBarType.fixed, // Better for 4+ items
+          type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.black,
           selectedItemColor: Colors.green,
           unselectedItemColor: Colors.grey,
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Home',
+            ),
             BottomNavigationBarItem(
               icon: Icon(Icons.favorite),
               label: 'Favorites',
             ),
-            BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.search),
+              label: 'Search',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+              label: 'Profile',
+            ),
           ],
         ),
       ),
