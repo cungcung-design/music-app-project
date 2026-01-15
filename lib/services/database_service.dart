@@ -986,6 +986,61 @@ class DatabaseService {
     }).toList();
   }
 
+  // -------------------- RECENTLY PLAYED SONGS FOR USER --------------------
+  Future<List<Song>> getRecentlyPlayedSongs({int limit = 5}) async {
+    final user = currentUser;
+    if (user == null) return [];
+    final res = await supabase
+        .from('user_play_history')
+        .select('song_id, played_at')
+        .eq('user_id', user.id)
+        .order('played_at', ascending: false)
+        .limit(limit);
+    final songIds = List<String>.from(res.map((e) => e['song_id']));
+    if (songIds.isEmpty) return [];
+    final songsRes = await supabase
+        .from('songs')
+        .select()
+        .filter('id', 'in', '(${songIds.join(',')})');
+    final data = List<Map<String, dynamic>>.from(songsRes);
+    final albumMap = await getAlbumCoverMap();
+    final artistMap = Map<String, String>.fromEntries(
+      (await supabase.from('artists').select()).map(
+        (e) => MapEntry(e['id'].toString(), e['name'].toString()),
+      ),
+    );
+    // Sort by the order from songIds to maintain recent order
+    final songMap = Map<String, Map<String, dynamic>>.fromEntries(
+      data.map((e) => MapEntry(e['id'].toString(), e)),
+    );
+    return songIds
+        .map((id) {
+          final e = songMap[id];
+          if (e == null) return null;
+          final audioUrl = resolveUrl(
+            supabase: supabase,
+            bucket: 'song_audio',
+            value: e['audio_url'],
+          );
+          final albumId = e['album_id']?.toString() ?? '';
+          final albumImage = albumId.isNotEmpty ? albumMap[albumId] : null;
+          final artistId = e['artist_id']?.toString();
+          final artistName = artistId != null ? artistMap[artistId] : null;
+          return Song(
+            id: e['id'].toString(),
+            name: e['name'] ?? '',
+            artistId: artistId ?? '',
+            albumId: albumId,
+            audioUrl: audioUrl,
+            albumImage: albumImage,
+            artistName: artistName,
+          );
+        })
+        .where((song) => song != null)
+        .cast<Song>()
+        .toList();
+  }
+
   // -------------------- ORPHANED SONGS --------------------
   Future<List<String>> getOrphanedSongs() async {
     final storageSongs = await fetchSongsFromStorage();

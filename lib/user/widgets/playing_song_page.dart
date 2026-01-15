@@ -142,7 +142,6 @@ class _NowPlayingPageState extends State<NowPlayingPage>
           ),
           const SizedBox(height: 32),
 
-          // Song Name & Artist
           Text(
             _currentSong.name,
             style: const TextStyle(color: Colors.white, fontSize: 20),

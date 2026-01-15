@@ -3,8 +3,10 @@ import '../../models/artist.dart';
 
 class ArtistSection extends StatefulWidget {
   final List<Artist> artists;
+  final void Function(Artist) onArtistTap;
 
-  const ArtistSection({super.key, required this.artists});
+  const ArtistSection(
+      {super.key, required this.artists, required this.onArtistTap});
 
   @override
   State<ArtistSection> createState() => _ArtistSectionState();
@@ -42,50 +44,53 @@ class _ArtistSectionState extends State<ArtistSection> {
             itemBuilder: (context, index) {
               final artist = widget.artists[index];
 
-              return Padding(
-                padding: const EdgeInsets.only(right: 14),
-                child: Column(
-                  children: [
-                    // 🎤 ARTIST IMAGE
-                    Container(
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[850],
-                        shape: BoxShape.circle,
-                      ),
-                      child: ClipOval(
-                        child: artist.artistProfileUrl != null &&
-                                artist.artistProfileUrl!.isNotEmpty
-                            ? Image.network(
-                                artist.artistProfileUrl!,
-                                fit: BoxFit.cover,
-                              )
-                            : const Icon(
-                                Icons.person,
-                                size: 40,
-                                color: Colors.white54,
-                              ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // 🧑 ARTIST NAME
-                    SizedBox(
-                      width: 90,
-                      child: Text(
-                        artist.name,
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
+              return GestureDetector(
+                onTap: () => widget.onArtistTap(artist),
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 14),
+                  child: Column(
+                    children: [
+                      // 🎤 ARTIST IMAGE
+                      Container(
+                        width: 90,
+                        height: 90,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[850],
+                          shape: BoxShape.circle,
+                        ),
+                        child: ClipOval(
+                          child: artist.artistProfileUrl != null &&
+                                  artist.artistProfileUrl!.isNotEmpty
+                              ? Image.network(
+                                  artist.artistProfileUrl!,
+                                  fit: BoxFit.cover,
+                                )
+                              : const Icon(
+                                  Icons.person,
+                                  size: 40,
+                                  color: Colors.white54,
+                                ),
                         ),
                       ),
-                    ),
-                  ],
+
+                      const SizedBox(height: 8),
+
+                      // 🧑 ARTIST NAME
+                      SizedBox(
+                        width: 90,
+                        child: Text(
+                          artist.name,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },

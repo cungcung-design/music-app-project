@@ -60,8 +60,8 @@ class ArtistsPage extends StatelessWidget {
                             'artist_profiles',
                           )!,
                           fit: BoxFit.cover,
-                          width: 48,
-                          height: 48,
+                          width: 40,
+                          height: 40,
                           errorBuilder: (context, error, stackTrace) {
                             return const Icon(
                               Icons.person,

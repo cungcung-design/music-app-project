@@ -8,6 +8,7 @@ import '../widgets/playing_song_page.dart';
 import '../widgets/popular_section.dart';
 import '../widgets/recently_played_section.dart';
 import '../widgets/artist_section.dart';
+import '../widgets/artist_detail_page.dart';
 import '../../utils/toast.dart';
 
 class SuggestedPage extends StatefulWidget {
@@ -39,16 +40,11 @@ class _SuggestedPageState extends State<SuggestedPage> {
 
   Future<SuggestedData> _fetchData() async {
     final artists = await widget.db.getArtists();
-    final allSongs = await widget.db.getSongsWithDetails();
-
-    allSongs.sort(
-      (a, b) => (b.playCount ?? 0).compareTo(a.playCount ?? 0),
-    );
-
+    final recentlyPlayed = await widget.db.getRecentlyPlayedSongs(limit: 5);
     final popularSongs = await widget.db.getPopularSongs(limit: 5);
 
     return SuggestedData(
-      recentlyPlayed: allSongs.take(5).toList(),
+      recentlyPlayed: recentlyPlayed,
       popularSongs: popularSongs,
       artists: artists,
     );
@@ -56,27 +52,18 @@ class _SuggestedPageState extends State<SuggestedPage> {
 
   void _playSong(Song song) {
     AudioPlayerService().playSong(song);
+  }
+
+  void _navigateToArtistDetail(Artist artist) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => NowPlayingPage(song: song)),
+      MaterialPageRoute(
+        builder: (context) => ArtistDetailPage(db: widget.db, artist: artist),
+      ),
     );
   }
 
-  Future<void> _toggleFavorite(Song song) async {
-    final isFavorite = _favoriteSongIds.contains(song.id);
 
-    if (isFavorite) {
-      await widget.db.removeFromFavorites(song.id);
-      _favoriteSongIds.remove(song.id);
-      showToast(context, 'Removed from favorites');
-    } else {
-      await widget.db.addToFavorites(song.id);
-      _favoriteSongIds.add(song.id);
-      showToast(context, 'Added to favorites');
-    }
-
-    setState(() {});
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,16 +89,14 @@ class _SuggestedPageState extends State<SuggestedPage> {
                 songs: data.recentlyPlayed,
                 onSongTap: _playSong,
               ),
-
               const SizedBox(height: 24),
               PopularSection(
                 songs: data.popularSongs,
                 onSongTap: _playSong,
               ),
-
               const SizedBox(height: 24),
-              ArtistSection(artists: data.artists),
-
+              ArtistSection(
+                  artists: data.artists, onArtistTap: _navigateToArtistDetail),
               const SizedBox(height: 80),
             ],
           ),

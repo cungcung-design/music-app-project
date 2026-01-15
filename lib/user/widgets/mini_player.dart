@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/audio_player_service.dart';
+import 'playing_song_page.dart';
 
 class MiniPlayer extends StatefulWidget {
   const MiniPlayer({super.key});
@@ -56,20 +57,33 @@ class _MiniPlayerState extends State<MiniPlayer> {
           Row(
             children: [
               // Artwork
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.grey[700],
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: Image.network(
-                    song.albumImage ?? '',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.music_note, color: Colors.white),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => NowPlayingPage(
+                        song: song,
+                        playlist: service.playlist,
+                      ),
+                    ),
+                  );
+                },
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Image.network(
+                      song.albumImage ?? '',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.music_note, color: Colors.white),
+                    ),
                   ),
                 ),
               ),
@@ -105,15 +119,18 @@ class _MiniPlayerState extends State<MiniPlayer> {
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
-                icon: const Icon(Icons.skip_previous, color: Colors.white, size: 28),
+                icon: const Icon(Icons.skip_previous,
+                    color: Colors.white, size: 28),
                 onPressed: () => service.playPrevious(),
               ),
-              
+
               // Play/Pause Button
               IconButton(
                 iconSize: 32,
                 icon: Icon(
-                  service.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                  service.isPlaying
+                      ? Icons.pause_circle_filled
+                      : Icons.play_circle_filled,
                   color: Colors.greenAccent,
                 ),
                 onPressed: () =>
@@ -124,7 +141,8 @@ class _MiniPlayerState extends State<MiniPlayer> {
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
-                icon: const Icon(Icons.skip_next, color: Colors.white, size: 28),
+                icon:
+                    const Icon(Icons.skip_next, color: Colors.white, size: 28),
                 onPressed: () => service.playNext(),
               ),
 
@@ -144,7 +162,7 @@ class _MiniPlayerState extends State<MiniPlayer> {
               const SizedBox(width: 8),
             ],
           ),
-          
+
           // --- PROGRESS BAR ---
           const SizedBox(height: 8),
           Padding(

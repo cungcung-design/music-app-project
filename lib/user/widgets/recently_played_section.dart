@@ -4,12 +4,7 @@ import '../../models/song.dart';
 class RecentlyPlayedSection extends StatelessWidget {
   final List<Song> songs;
   final Function(Song)? onSongTap;
-
-  const RecentlyPlayedSection({
-    super.key,
-    required this.songs,
-    this.onSongTap,
-  });
+  const RecentlyPlayedSection({super.key, required this.songs, this.onSongTap});
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +16,7 @@ class RecentlyPlayedSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             "Recently Played",
             style: TextStyle(
@@ -31,20 +26,17 @@ class RecentlyPlayedSection extends StatelessWidget {
             ),
           ),
         ),
-
         const SizedBox(height: 12),
-
         SizedBox(
           height: 160,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: songs.length,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
             separatorBuilder: (context, index) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final song = songs[index];
               return GestureDetector(
-                onTap: () => onSongTap?.call(song),
+                onTap: () {},
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -57,16 +49,12 @@ class RecentlyPlayedSection extends StatelessWidget {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: song.albumImage != null && song.albumImage!.isNotEmpty
-                            ? Image.network(
-                                song.albumImage!,
-                                fit: BoxFit.cover,
-                              )
-                            : const Icon(
-                                Icons.music_note,
-                                color: Colors.white,
-                                size: 50,
-                              ),
+                        child: Image.network(
+                          song.albumImage ?? '',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.music_note, color: Colors.white),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),

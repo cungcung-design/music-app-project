@@ -1,4 +1,3 @@
-- [x] Update RecentlyPlayedSection to accept onSongTap callback
-- [x] Update SuggestedPage to import RecentlyPlayedSection
-- [ ] Replace \_songList call with RecentlyPlayedSection in SuggestedPage
-- [ ] Remove the \_songList method from SuggestedPage
+- [x] Add playlist getter to AudioPlayerService
+- [x] Import playing_song_page.dart in mini_player.dart
+- [x] Wrap artwork Container with GestureDetector for navigation to NowPlayingPage

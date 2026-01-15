@@ -49,42 +49,43 @@ class _UserHomePageState extends State<UserHomePage> {
                 centerTitle: false,
                 leadingWidth: 60,
                 titleSpacing: 0,
-
-                leading: Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: FutureBuilder<Profile?>(
-                    future: db.getProfile(db.currentUser?.id ?? ''),
-                    builder: (context, snapshot) {
-                      final profile = snapshot.data;
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const UserProfileViewDetail(),
-                            ),
-                          ).then((_) => setState(() {}));
-                        },
-                        child: ClipOval(
-                          child: Container(
-                            color: Colors.grey[900],
-                            child: (profile?.avatarUrl != null &&
-                                    profile!.avatarUrl!.isNotEmpty)
-                                ? Image.network(
-                                    profile.avatarUrl!,
-                                    fit: BoxFit.cover,
-                                  )
-                                : const Icon(
-                                    Icons.person,
-                                    size: 30,
-                                    color: Colors.white,
-                                  ),
-                          ),
-                        ),
-                      );
-                    },
+leading: Padding(
+  padding: const EdgeInsets.only(left: 8),
+  child: FutureBuilder<Profile?>(
+    future: db.getProfile(db.currentUser?.id ?? ''),
+    builder: (context, snapshot) {
+      final profile = snapshot.data;
+      return GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const UserProfileViewDetail(),
+            ),
+          ).then((_) => setState(() {}));
+        },
+        child: ClipOval(
+          child: Container(
+            width: 28,   // very small width
+            height: 28,  // very small height
+            color: Colors.grey[900],
+            child: (profile?.avatarUrl != null && profile!.avatarUrl!.isNotEmpty)
+                ? Image.network(
+                    profile.avatarUrl!,
+                    fit: BoxFit.cover,
+                  )
+                : const Icon(
+                    Icons.person,
+                    size: 16, // smaller icon
+                    color: Colors.white,
                   ),
-                ),
+          ),
+        ),
+      );
+    },
+  ),
+),
+
                 title: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: const [
