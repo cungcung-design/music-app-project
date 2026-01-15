@@ -1,3 +1,4 @@
-- [x] Add import 'dart:math' to popular_section.dart
-- [x] Change itemCount in ListView to min(widget.songs.length, 5)
-- [x] Change limit in tab_widgets.dart to 5
+- [x] Update RecentlyPlayedSection to accept onSongTap callback
+- [x] Update SuggestedPage to import RecentlyPlayedSection
+- [ ] Replace \_songList call with RecentlyPlayedSection in SuggestedPage
+- [ ] Remove the \_songList method from SuggestedPage

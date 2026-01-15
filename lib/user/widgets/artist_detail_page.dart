@@ -134,8 +134,12 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                         final song = songs[index];
 
                         return ListTile(
-                          onTap: () =>
-                              AudioPlayerService().playSong(song),
+                         onTap: () {
+  final player = AudioPlayerService();
+  player.setPlaylist(songs);
+  player.playSong(song);
+},
+
 
                           leading: ClipRRect(
                             borderRadius: BorderRadius.circular(8),

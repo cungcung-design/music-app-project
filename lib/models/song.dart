@@ -23,7 +23,6 @@ class Song {
     this.order = 0,
   });
 
-  /// Convert DB map into Song object
   factory Song.fromMap(Map<String, dynamic> map, {String? storageUrl}) {
     final path = map['audio_url'] as String?;
     String? url;
@@ -32,7 +31,7 @@ class Song {
       if (path.startsWith('http')) {
         url = path; // already full URL
       } else if (storageUrl != null) {
-        url = '$storageUrl/$path'; // generate public URL
+        url = storageUrl; // storageUrl is already the full public URL
       }
     }
 

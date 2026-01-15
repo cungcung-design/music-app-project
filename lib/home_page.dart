@@ -5,8 +5,10 @@ import 'user/pages/favourite_page.dart';
 import 'user/pages/search_page.dart';
 import 'user/pages/user_profile_page.dart';
 import 'user/pages/user_profile_view.dart';
+import 'user/pages/songs_page.dart';
+import 'user/pages/artists_page.dart';
+import 'user/pages/albums_page.dart';
 import 'user/widgets/mini_player.dart';
-import 'user/widgets/tab_widgets.dart';
 import 'models/profile.dart';
 
 class UserHomePage extends StatefulWidget {
@@ -65,7 +67,6 @@ class _UserHomePageState extends State<UserHomePage> {
                         },
                         child: ClipOval(
                           child: Container(
-                           
                             color: Colors.grey[900],
                             child: (profile?.avatarUrl != null &&
                                     profile!.avatarUrl!.isNotEmpty)
@@ -127,10 +128,10 @@ class _UserHomePageState extends State<UserHomePage> {
               children: [
                 TabBarView(
                   children: [
-                    SuggestedTab(db: db),
-                    SongsTab(db: db),
-                    ArtistsTab(db: db),
-                    AlbumsTab(db: db),
+                    SuggestedPage(db: db),
+                    SongsPage(db: db),
+                    ArtistsPage(db: db),
+                    AlbumsPage(db: db),
                   ],
                 ),
                 const Align(

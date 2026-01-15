@@ -1,7 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../models/song.dart';
-import 'section_title.dart';
 
 class PopularSection extends StatefulWidget {
   final List<Song> songs;
@@ -20,24 +19,35 @@ class PopularSection extends StatefulWidget {
 class _PopularSectionState extends State<PopularSection> {
   @override
   Widget build(BuildContext context) {
-    if (widget.songs.isEmpty) {
-      return const SizedBox();
-    }
+    if (widget.songs.isEmpty) return const SizedBox();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionTitle('Popular Songs'),
+        // Simple title
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            "Popular Songs",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
         const SizedBox(height: 12),
+
         SizedBox(
           height: 185,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: min(widget.songs.length, 5),
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            separatorBuilder: (context, index) => const SizedBox(width: 12),
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final song = widget.songs[index];
+
               return GestureDetector(
                 onTap: () => widget.onSongTap(song),
                 child: Container(
@@ -57,7 +67,6 @@ class _PopularSectionState extends State<PopularSection> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Song Image Section
                       ClipRRect(
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(16),
@@ -66,23 +75,23 @@ class _PopularSectionState extends State<PopularSection> {
                         child: SizedBox(
                           height: 120,
                           width: double.infinity,
-                          child: Image.network(
-                            song.albumImage ?? '',
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Container(
-                              color: Colors.grey[800],
-                              child: const Icon(
-                                Icons.music_note,
-                                color: Colors.white,
-                                size: 40,
-                              ),
-                            ),
-                          ),
+                          child: song.albumImage != null && song.albumImage!.isNotEmpty
+                              ? Image.network(
+                                  song.albumImage!,
+                                  fit: BoxFit.cover,
+                                )
+                              : Container(
+                                  color: Colors.grey[800],
+                                  child: const Icon(
+                                    Icons.music_note,
+                                    color: Colors.white,
+                                    size: 40,
+                                  ),
+                                ),
                         ),
                       ),
                       const SizedBox(height: 8),
-                      // Song Title
+
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         child: Text(
@@ -96,7 +105,6 @@ class _PopularSectionState extends State<PopularSection> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      // Artist Name
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         child: Text(

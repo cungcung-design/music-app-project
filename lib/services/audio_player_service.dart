@@ -1,4 +1,4 @@
-import 'package:audioplayers/audioplayers.dart';
+ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import '../models/song.dart';
 
@@ -39,22 +39,24 @@ class AudioPlayerService extends ChangeNotifier {
     return await _player.getDuration() ?? Duration.zero;
   }
 
-  Future<void> playSong(Song song) async {
-    try {
-      if (currentSong?.id != song.id) {
-        await _player.stop();
-        await _player.setSourceUrl(song.audioUrl!);
-        // Cache the duration
-        _cachedDuration = await _player.getDuration();
-        currentSong = song;
-      }
-      await _player.resume();
-      notifyListeners();
-    } catch (e) {
-      print('Error playing song: $e');
-      // Optionally, show a toast or handle the error
-    }
+Future<void> playSong(Song song) async {
+  try {
+    if (song.audioUrl == null || song.audioUrl!.isEmpty) return;
+
+    await _player.stop();
+
+    currentSong = song;
+    notifyListeners(); 
+
+    await _player.play(
+      UrlSource(song.audioUrl!),
+      volume: 1.0,
+      position: Duration.zero,
+    );
+  } catch (e) {
+    print('Audio error: $e');
   }
+}
 
   Future<void> pause() async {
     await _player.pause();
@@ -96,5 +98,5 @@ class AudioPlayerService extends ChangeNotifier {
         ? _currentIndex - 1
         : _playlist.length - 1;
     await playSong(_playlist[_currentIndex]);
-  }
-}
+  }  
+} 
