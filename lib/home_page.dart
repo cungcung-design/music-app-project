@@ -22,19 +22,6 @@ class _UserHomePageState extends State<UserHomePage> {
   int selectedBottomIndex = 0;
   final DatabaseService db = DatabaseService();
 
-  late final List<Widget> _pages;
-
-  @override
-  void initState() {
-    super.initState();
-    _pages = [
-      SuggestedPage(db: db),
-      FavoritesPage(db: db),
-      const SearchPage(),
-      const UserProfilePage(),
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -42,6 +29,7 @@ class _UserHomePageState extends State<UserHomePage> {
       child: Scaffold(
         backgroundColor: Colors.black,
 
+        // App bar only appears when the 'Home' tab (index 0) is selected
         appBar: selectedBottomIndex == 0
             ? AppBar(
                 backgroundColor: const Color.fromARGB(255, 7, 7, 7),
@@ -49,51 +37,47 @@ class _UserHomePageState extends State<UserHomePage> {
                 centerTitle: false,
                 leadingWidth: 60,
                 titleSpacing: 0,
-leading: Padding(
-  padding: const EdgeInsets.only(left: 8),
-  child: FutureBuilder<Profile?>(
-    future: db.getProfile(db.currentUser?.id ?? ''),
-    builder: (context, snapshot) {
-      final profile = snapshot.data;
-      return GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const UserProfileViewDetail(),
-            ),
-          ).then((_) => setState(() {}));
-        },
-        child: ClipOval(
-          child: Container(
-            width: 28,   // very small width
-            height: 28,  // very small height
-            color: Colors.grey[900],
-            child: (profile?.avatarUrl != null && profile!.avatarUrl!.isNotEmpty)
-                ? Image.network(
-                    profile.avatarUrl!,
-                    fit: BoxFit.cover,
-                  )
-                : const Icon(
-                    Icons.person,
-                    size: 16, // smaller icon
-                    color: Colors.white,
+                leading: Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: FutureBuilder<Profile?>(
+                    future: db.getProfile(db.currentUser?.id ?? ''),
+                    builder: (context, snapshot) {
+                      final profile = snapshot.data;
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const UserProfileViewDetail(),
+                            ),
+                          ).then((_) => setState(() {}));
+                        },
+                        child: ClipOval(
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            color: Colors.grey[900],
+                            child: (profile?.avatarUrl != null &&
+                                    profile!.avatarUrl!.isNotEmpty)
+                                ? Image.network(
+                                    profile.avatarUrl!,
+                                    fit: BoxFit.cover,
+                                  )
+                                : const Icon(
+                                    Icons.person,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-          ),
-        ),
-      );
-    },
-  ),
-),
-
+                ),
                 title: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: const [
-                    Icon(
-                      Icons.music_note,
-                      color: Colors.green,
-                      size: 40,
-                    ),
+                    Icon(Icons.music_note, color: Colors.green, size: 40),
                     SizedBox(width: 6),
                     Text(
                       'Spotify',
@@ -105,8 +89,6 @@ leading: Padding(
                     ),
                   ],
                 ),
-
-                /// TAB BAR
                 bottom: const TabBar(
                   indicatorColor: Colors.green,
                   labelColor: Colors.green,
@@ -121,60 +103,46 @@ leading: Padding(
               )
             : null,
 
-        /// BODY
+        /// BODY - Uses IndexedStack to keep page states alive
         body: IndexedStack(
           index: selectedBottomIndex,
           children: [
-            Stack(
+            // Index 0: Home Tab with sub-tabs
+            TabBarView(
               children: [
-                TabBarView(
-                  children: [
-                    SuggestedPage(db: db),
-                    SongsPage(db: db),
-                    ArtistsPage(db: db),
-                    AlbumsPage(db: db),
-                  ],
-                ),
-                const Align(
-                  alignment: Alignment.bottomCenter,
-                  child: MiniPlayer(),
-                ),
+                SuggestedPage(db: db),
+                SongsPage(db: db),
+                ArtistsPage(db: db),
+                AlbumsPage(db: db),
               ],
             ),
-            _pages[1],
-            _pages[2],
-            _pages[3],
+            FavoritesPage(db: db),
+            const SearchPage(),
+            const UserProfilePage(),
           ],
         ),
 
-        /// BOTTOM NAVIGATION
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: selectedBottomIndex,
-          onTap: (index) {
-            setState(() {
-              selectedBottomIndex = index;
-            });
-          },
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.black,
-          selectedItemColor: Colors.green,
-          unselectedItemColor: Colors.grey,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.favorite),
-              label: 'Favorites',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.search),
-              label: 'Search',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person),
-              label: 'Profile',
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const MiniPlayer(), 
+            BottomNavigationBar(
+              currentIndex: selectedBottomIndex,
+              onTap: (index) {
+                setState(() {
+                  selectedBottomIndex = index;
+                });
+              },
+              type: BottomNavigationBarType.fixed,
+              backgroundColor: Colors.black,
+              selectedItemColor: Colors.green,
+              unselectedItemColor: Colors.grey,
+              items: const [
+                BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+                BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favorites'),
+                BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
+                BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+              ],
             ),
           ],
         ),

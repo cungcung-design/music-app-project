@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
@@ -13,6 +14,15 @@ import '../models/storage_song.dart';
 class DatabaseService {
   final SupabaseClient supabase = Supabase.instance.client;
   final Uuid uuid = const Uuid();
+
+  final StreamController<void> _favoritesController =
+      StreamController<void>.broadcast();
+
+  Stream<void> get favoritesChanged => _favoritesController.stream;
+
+  void notifyFavoritesChanged() {
+    _favoritesController.add(null);
+  }
 
   // -------------------- Helper --------------------
   String? getStorageUrl(String? path, String bucket) {
@@ -778,7 +788,6 @@ class DatabaseService {
           fileOptions: const FileOptions(upsert: true),
         );
 
-    // 4️⃣ Update DB
     await supabase
         .from('songs')
         .update({'audio_url': newPath}).eq('id', songId);
@@ -790,12 +799,23 @@ class DatabaseService {
   Future<void> addToFavorites(String songId) async {
     final user = currentUser;
     if (user == null) throw Exception('User not logged in');
-    await supabase.from('user_favorites').insert({
-      'id': uuid.v4(),
-      'user_id': user.id,
-      'song_id': songId,
-      'created_at': DateTime.now().toIso8601String(),
-    });
+
+    // Check if already favorite
+    final existing = await supabase
+        .from('user_favorites')
+        .select()
+        .eq('user_id', user.id)
+        .eq('song_id', songId)
+        .maybeSingle();
+
+    if (existing == null) {
+      await supabase.from('user_favorites').insert({
+        'id': uuid.v4(),
+        'user_id': user.id,
+        'song_id': songId,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    }
   }
 
   Future<void> removeFromFavorites(String songId) async {
@@ -823,43 +843,60 @@ class DatabaseService {
   Future<List<Song>> getFavorites() async {
     final user = currentUser;
     if (user == null) return [];
-    final res = await supabase
-        .from('user_favorites')
-        .select('song_id')
-        .eq('user_id', user.id);
-    final songIds = List<String>.from(res.map((e) => e['song_id']));
-    if (songIds.isEmpty) return [];
-    final songsRes = await supabase
-        .from('songs')
-        .select()
-        .filter('id', 'in', '(${songIds.join(',')})');
-    final data = List<Map<String, dynamic>>.from(songsRes);
-    final albumMap = await getAlbumCoverMap();
-    final artistMap = Map<String, String>.fromEntries(
-      (await supabase.from('artists').select()).map(
-        (e) => MapEntry(e['id'].toString(), e['name'].toString()),
-      ),
-    );
-    return data.map((e) {
+
+    final res = await supabase.from('user_favorites').select('''
+        songs (
+          id,
+          name,
+          audio_url,
+          album_id,
+          artist_id,
+          artists (name),
+          albums (album_url)
+        )
+      ''').eq('user_id', user.id);
+
+    final data = List<Map<String, dynamic>>.from(res);
+
+    return data.where((item) => item['songs'] != null).map((item) {
+      final e = item['songs'] as Map<String, dynamic>;
+
       final audioUrl = resolveUrl(
         supabase: supabase,
         bucket: 'song_audio',
         value: e['audio_url'],
       );
-      final albumId = e['album_id']?.toString() ?? '';
-      final albumImage = albumId.isNotEmpty ? albumMap[albumId] : null;
-      final artistId = e['artist_id']?.toString();
-      final artistName = artistId != null ? artistMap[artistId] : null;
+
+      final artistName = e['artists']?['name'];
+
+      final albumImage = e['albums']?['album_url'] != null
+          ? resolveUrl(
+              supabase: supabase,
+              bucket: 'album_covers',
+              value: e['albums']['album_url'],
+            )
+          : null;
+
       return Song(
-        id: e['id'].toString(),
+        id: e['id'] as String,
         name: e['name'] ?? '',
-        artistId: artistId ?? '',
-        albumId: albumId,
+        artistId: e['artist_id'] as String,
+        albumId: e['album_id'] as String,
         audioUrl: audioUrl,
         albumImage: albumImage,
         artistName: artistName,
       );
     }).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getUserFavoritesRaw() async {
+    final user = currentUser;
+    if (user == null) return [];
+
+    final res =
+        await supabase.from('user_favorites').select().eq('user_id', user.id);
+
+    return List<Map<String, dynamic>>.from(res);
   }
 
   // -------------------- SEARCH --------------------
@@ -935,110 +972,91 @@ class DatabaseService {
     }).toList();
   }
 
-  // -------------------- RECOMMENDED --------------------
-  Future<List<Song>> getRecommendedSongs(
-    String userId, {
-    int limit = 10,
-  }) async {
-    // Simple recommendation: songs not in favorites, ordered by play count
-    final favoritesRes = await supabase
-        .from('user_favorites')
-        .select('song_id')
-        .eq('user_id', userId);
-    final favoriteSongIds = List<String>.from(
-      favoritesRes.map((e) => e['song_id']),
-    );
-    final songsRes = await supabase
-        .from('songs')
-        .select()
-        .order('play_count', ascending: false)
-        .limit(limit * 2);
-    final data = List<Map<String, dynamic>>.from(songsRes);
-    final albumMap = await getAlbumCoverMap();
-    final artistMap = Map<String, String>.fromEntries(
-      (await supabase.from('artists').select()).map(
-        (e) => MapEntry(e['id'].toString(), e['name'].toString()),
-      ),
-    );
-    final recommended = data
-        .where((e) => !favoriteSongIds.contains(e['id']))
-        .take(limit)
-        .toList();
-    return recommended.map((e) {
+  // -------------------- ADD TO PLAY HISTORY --------------------
+  Future<void> addToPlayHistory(String songId) async {
+    final user = currentUser;
+    if (user == null) return;
+
+    final fiveMinutesAgo = DateTime.now().subtract(const Duration(minutes: 5));
+    final recentPlay = await supabase
+        .from('user_play_history')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('song_id', songId)
+        .gte('played_at', fiveMinutesAgo.toIso8601String())
+        .maybeSingle();
+
+    if (recentPlay != null) {
+      // Update the existing entry's played_at timestamp
+      await supabase
+          .from('user_play_history')
+          .update({'played_at': DateTime.now().toIso8601String()}).eq(
+              'id', recentPlay['id']);
+    } else {
+      // Insert a new entry
+      await supabase.from('user_play_history').insert({
+        'id': uuid.v4(),
+        'user_id': user.id,
+        'song_id': songId,
+        'played_at': DateTime.now().toIso8601String(),
+      });
+    }
+  }
+
+  // -------------------- GET RECENTLY PLAYED SONGS --------------------
+  Future<List<Song>> getRecentlyPlayedSongs({int limit = 5}) async {
+    final user = currentUser;
+    if (user == null) return [];
+
+    final res = await supabase
+        .from('user_play_history')
+        .select('''
+        songs (
+          id,
+          name,
+          audio_url,
+          album_id,
+          artist_id,
+          artists (name),
+          albums (album_url)
+        )
+      ''')
+        .eq('user_id', user.id)
+        .order('played_at', ascending: false)
+        .limit(limit);
+
+    final data = List<Map<String, dynamic>>.from(res);
+
+    return data.map((item) {
+      final e = item['songs'] as Map<String, dynamic>;
+
+      // Resolve Audio URL
       final audioUrl = resolveUrl(
         supabase: supabase,
         bucket: 'song_audio',
         value: e['audio_url'],
       );
-      final albumId = e['album_id']?.toString() ?? '';
-      final albumImage = albumId.isNotEmpty ? albumMap[albumId] : null;
-      final artistId = e['artist_id']?.toString();
-      final artistName = artistId != null ? artistMap[artistId] : null;
+
+      // Get metadata from the joined response
+      final artistName = e['artists']?['name'];
+      final albumImage = e['albums']?['album_url'] != null
+          ? resolveUrl(
+              supabase: supabase,
+              bucket: 'album_covers',
+              value: e['albums']['album_url'],
+            )
+          : null;
+
       return Song(
         id: e['id'].toString(),
         name: e['name'] ?? '',
-        artistId: artistId ?? '',
-        albumId: albumId,
+        artistId: e['artist_id']?.toString() ?? '',
+        albumId: e['album_id']?.toString() ?? '',
         audioUrl: audioUrl,
         albumImage: albumImage,
         artistName: artistName,
       );
     }).toList();
-  }
-
-  // -------------------- RECENTLY PLAYED SONGS FOR USER --------------------
-  Future<List<Song>> getRecentlyPlayedSongs({int limit = 5}) async {
-    final user = currentUser;
-    if (user == null) return [];
-    final res = await supabase
-        .from('user_play_history')
-        .select('song_id, played_at')
-        .eq('user_id', user.id)
-        .order('played_at', ascending: false)
-        .limit(limit);
-    final songIds = List<String>.from(res.map((e) => e['song_id']));
-    if (songIds.isEmpty) return [];
-    final songsRes = await supabase
-        .from('songs')
-        .select()
-        .filter('id', 'in', '(${songIds.join(',')})');
-    final data = List<Map<String, dynamic>>.from(songsRes);
-    final albumMap = await getAlbumCoverMap();
-    final artistMap = Map<String, String>.fromEntries(
-      (await supabase.from('artists').select()).map(
-        (e) => MapEntry(e['id'].toString(), e['name'].toString()),
-      ),
-    );
-    // Sort by the order from songIds to maintain recent order
-    final songMap = Map<String, Map<String, dynamic>>.fromEntries(
-      data.map((e) => MapEntry(e['id'].toString(), e)),
-    );
-    return songIds
-        .map((id) {
-          final e = songMap[id];
-          if (e == null) return null;
-          final audioUrl = resolveUrl(
-            supabase: supabase,
-            bucket: 'song_audio',
-            value: e['audio_url'],
-          );
-          final albumId = e['album_id']?.toString() ?? '';
-          final albumImage = albumId.isNotEmpty ? albumMap[albumId] : null;
-          final artistId = e['artist_id']?.toString();
-          final artistName = artistId != null ? artistMap[artistId] : null;
-          return Song(
-            id: e['id'].toString(),
-            name: e['name'] ?? '',
-            artistId: artistId ?? '',
-            albumId: albumId,
-            audioUrl: audioUrl,
-            albumImage: albumImage,
-            artistName: artistName,
-          );
-        })
-        .where((song) => song != null)
-        .cast<Song>()
-        .toList();
   }
 
   // -------------------- ORPHANED SONGS --------------------

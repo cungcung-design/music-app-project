@@ -21,6 +21,12 @@ class AudioPlayerService extends ChangeNotifier {
       _cachedDuration = dur;
       notifyListeners();
     });
+
+    _player.onPlayerComplete.listen((event) {
+      if (_playlist.isNotEmpty) {
+        playNext();
+      }
+    });
   }
 
   final AudioPlayer _player = AudioPlayer();

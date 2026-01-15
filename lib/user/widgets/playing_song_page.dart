@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:simple_animations/simple_animations.dart';
-import '../../models/song.dart';
 import '../../services/audio_player_service.dart';
+import '../../models/song.dart';
+import '../../services/database_service.dart';
 
 class NowPlayingPage extends StatefulWidget {
   final Song song;
-  final List<Song>? playlist;
-  const NowPlayingPage({super.key, required this.song, this.playlist});
+  const NowPlayingPage({super.key, required this.song});
 
   @override
   State<NowPlayingPage> createState() => _NowPlayingPageState();
@@ -16,7 +15,10 @@ class _NowPlayingPageState extends State<NowPlayingPage>
     with SingleTickerProviderStateMixin {
   late Song _currentSong;
   bool _isPlaying = false;
+  bool _isFavorited = false;
+
   late AudioPlayerService _service;
+  final DatabaseService _db = DatabaseService();
   late AnimationController _rotationController;
 
   @override
@@ -25,19 +27,75 @@ class _NowPlayingPageState extends State<NowPlayingPage>
     _service = AudioPlayerService();
     _currentSong = widget.song;
 
-    _service.playSong(_currentSong);
-    _isPlaying = true;
+    _checkFavoriteStatus();
 
-    _service.addListener(_update);
-
-    // Rotation controller for album art
     _rotationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 20),
+      duration: const Duration(seconds: 12),
     );
 
-    // Start rotation if playing
-    if (_isPlaying) _rotationController.repeat();
+    // Sync state with service
+    if (_service.currentSong?.id == widget.song.id && _service.isPlaying) {
+      _isPlaying = true;
+      _rotationController.repeat();
+    } else {
+      _service.playSong(_currentSong);
+      _isPlaying = true;
+      _rotationController.repeat();
+    }
+
+    _service.addListener(_update);
+  }
+
+  Future<void> _checkFavoriteStatus() async {
+    final status = await _db.isFavorite(_currentSong.id);
+    if (mounted) {
+      setState(() => _isFavorited = status);
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    final bool originalStatus = _isFavorited;
+
+    // Update UI first (Optimistic)
+    setState(() => _isFavorited = !_isFavorited);
+
+    try {
+      if (originalStatus) {
+        await _db.removeFromFavorites(_currentSong.id);
+      } else {
+        await _db.addToFavorites(_currentSong.id);
+      }
+      _db.notifyFavoritesChanged();
+    } catch (e) {
+      setState(() => _isFavorited = originalStatus);
+    }
+  }
+
+  void _update() {
+    if (!mounted) return;
+
+    setState(() {
+      final newSong = _service.currentSong ?? _currentSong;
+
+      if (_currentSong.id != newSong.id) {
+        _currentSong = newSong;
+        _checkFavoriteStatus();
+      }
+
+      _isPlaying = _service.isPlaying;
+
+      // Handle Animation State
+      if (_isPlaying) {
+        if (!_rotationController.isAnimating) {
+          _rotationController.repeat();
+        }
+      } else {
+        if (_rotationController.isAnimating) {
+          _rotationController.stop();
+        }
+      }
+    });
   }
 
   @override
@@ -47,54 +105,16 @@ class _NowPlayingPageState extends State<NowPlayingPage>
     super.dispose();
   }
 
-  void _update() {
-    if (mounted) setState(() {});
-  }
-
   void _togglePlayPause() {
     if (_isPlaying) {
       _service.pause();
-      _rotationController.stop();
     } else {
       _service.resume();
-      _rotationController.repeat();
     }
-    setState(() {
-      _isPlaying = !_isPlaying;
-    });
   }
 
-  void _playSong(Song song) {
-    _service.playSong(song);
-    _rotationController.repeat();
-    setState(() {
-      _currentSong = song;
-      _isPlaying = true;
-    });
-  }
-
-  void _nextSong() {
-    if (widget.playlist == null || widget.playlist!.isEmpty) return;
-    final index = widget.playlist!.indexWhere((s) => s.id == _currentSong.id);
-    if (index == -1) return;
-    final nextIndex = (index + 1) % widget.playlist!.length;
-    _playSong(widget.playlist![nextIndex]);
-  }
-
-  void _previousSong() {
-    if (widget.playlist == null || widget.playlist!.isEmpty) return;
-    final index = widget.playlist!.indexWhere((s) => s.id == _currentSong.id);
-    if (index == -1) return;
-    final prevIndex =
-        (index - 1 + widget.playlist!.length) % widget.playlist!.length;
-    _playSong(widget.playlist![prevIndex]);
-  }
-
-  String _formatDuration(Duration d) {
-    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$minutes:$seconds';
-  }
+  String _format(Duration d) =>
+      '${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${d.inSeconds.remainder(60).toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context) {
@@ -106,130 +126,124 @@ class _NowPlayingPageState extends State<NowPlayingPage>
       appBar: AppBar(
         backgroundColor: Colors.grey[900],
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: const BackButton(color: Colors.white),
       ),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // 🎵 Rotating Album Art
-          AnimatedBuilder(
-            animation: _rotationController,
-            builder: (context, child) {
-              return Transform.rotate(
-                angle: _rotationController.value * 6.28319, // 2 * pi radians
-                child: child,
-              );
-            },
-            child: Container(
-              width: 250,
-              height: 250,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.grey[700],
-              ),
-              child: _currentSong.albumImage != null
-                  ? ClipOval(
-                      child: Image.network(
-                        _currentSong.albumImage!,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                  : const Icon(Icons.music_note, color: Colors.white, size: 60),
+          // IMAGE ROTATION SECTION
+          RotationTransition(
+            turns: _rotationController,
+            child: CircleAvatar(
+              radius: 125,
+              backgroundImage: _currentSong.albumImage != null
+                  ? NetworkImage(_currentSong.albumImage!)
+                  : null,
+              backgroundColor: Colors.grey[700],
+              child: _currentSong.albumImage == null
+                  ? const Icon(Icons.music_note, size: 60, color: Colors.white)
+                  : null,
             ),
           ),
+
           const SizedBox(height: 32),
 
-          Text(
-            _currentSong.name,
-            style: const TextStyle(color: Colors.white, fontSize: 20),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (_currentSong.artistName != null)
-            Text(
-              _currentSong.artistName!,
-              style: const TextStyle(color: Colors.grey, fontSize: 16),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          const SizedBox(height: 24),
-
-          // Duration & Slider
+          // SONG INFO SECTION
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Row(
               children: [
-                Slider(
-                  value: position.inMilliseconds
-                      .toDouble()
-                      .clamp(
-                        0.0,
-                        duration.inMilliseconds.toDouble() == 0
-                            ? 1.0
-                            : duration.inMilliseconds.toDouble(),
-                      )
-                      .toDouble(),
-                  max: duration.inMilliseconds.toDouble() == 0
-                      ? 1.0
-                      : duration.inMilliseconds.toDouble(),
-                  activeColor: Colors.greenAccent,
-                  inactiveColor: Colors.grey[700],
-                  onChanged: (value) {
-                    _service.seek(Duration(milliseconds: value.toInt()));
-                  },
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _currentSong.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        _currentSong.artistName ?? 'Unknown Artist',
+                        style:
+                            const TextStyle(color: Colors.grey, fontSize: 18),
+                      ),
+                    ],
+                  ),
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _formatDuration(position),
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                    Text(
-                      _formatDuration(duration),
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ],
+                IconButton(
+                  icon: Icon(
+                    _isFavorited ? Icons.favorite : Icons.favorite_border,
+                    color: _isFavorited ? Colors.green : Colors.white,
+                    size: 30,
+                  ),
+                  onPressed: _toggleFavorite,
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 32),
 
-          // Controls: Previous, Play/Pause, Next
+          const SizedBox(height: 16),
+
+          // SLIDER SECTION
+          Slider(
+            value: position.inMilliseconds.toDouble().clamp(
+                0.0,
+                duration.inMilliseconds.toDouble() == 0
+                    ? 1.0
+                    : duration.inMilliseconds.toDouble()),
+            max: duration.inMilliseconds.toDouble() == 0
+                ? 1.0
+                : duration.inMilliseconds.toDouble(),
+            activeColor: Colors.green,
+            inactiveColor: Colors.grey[800],
+            onChanged: (v) => _service.seek(Duration(milliseconds: v.toInt())),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(_format(position),
+                    style: const TextStyle(color: Colors.white70)),
+                Text(_format(duration),
+                    style: const TextStyle(color: Colors.white70)),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // CONTROLS SECTION
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               IconButton(
-                icon: const Icon(
-                  Icons.skip_previous,
-                  color: Colors.white,
-                  size: 36,
-                ),
-                onPressed: _previousSong,
+                iconSize: 40,
+                icon: const Icon(Icons.skip_previous, color: Colors.white),
+                onPressed: _service.playPrevious,
               ),
-              const SizedBox(width: 32),
+              const SizedBox(width: 20),
               IconButton(
+                iconSize: 80,
                 icon: Icon(
                   _isPlaying
                       ? Icons.pause_circle_filled
                       : Icons.play_circle_fill,
                   color: Colors.greenAccent,
-                  size: 56,
                 ),
                 onPressed: _togglePlayPause,
               ),
-              const SizedBox(width: 32),
+              const SizedBox(width: 20),
               IconButton(
-                icon: const Icon(
-                  Icons.skip_next,
-                  color: Colors.white,
-                  size: 36,
-                ),
-                onPressed: _nextSong,
+                iconSize: 40,
+                icon: const Icon(Icons.skip_next, color: Colors.white),
+                onPressed: _service.playNext,
               ),
             ],
           ),

@@ -4,16 +4,13 @@ import '../../models/song.dart';
 import '../../models/suggested.dart';
 import '../../models/artist.dart';
 import '../../services/audio_player_service.dart';
-import '../widgets/playing_song_page.dart';
-import '../widgets/popular_section.dart';
 import '../widgets/recently_played_section.dart';
+import '../widgets/popular_section.dart';
 import '../widgets/artist_section.dart';
 import '../widgets/artist_detail_page.dart';
-import '../../utils/toast.dart';
 
 class SuggestedPage extends StatefulWidget {
   final DatabaseService db;
-
   const SuggestedPage({super.key, required this.db});
 
   @override
@@ -22,20 +19,11 @@ class SuggestedPage extends StatefulWidget {
 
 class _SuggestedPageState extends State<SuggestedPage> {
   late Future<SuggestedData> _dataFuture;
-  Set<String> _favoriteSongIds = {};
 
   @override
   void initState() {
     super.initState();
     _dataFuture = _fetchData();
-    _loadFavorites();
-  }
-
-  Future<void> _loadFavorites() async {
-    final favorites = await widget.db.getFavorites();
-    setState(() {
-      _favoriteSongIds = favorites.map((s) => s.id).toSet();
-    });
   }
 
   Future<SuggestedData> _fetchData() async {
@@ -50,58 +38,81 @@ class _SuggestedPageState extends State<SuggestedPage> {
     );
   }
 
-  void _playSong(Song song) {
-    AudioPlayerService().playSong(song);
+  void _playSong(Song song, List<Song> playlist) async {
+    final service = AudioPlayerService();
+    service.setPlaylist(playlist);
+    service.playSong(song);
+
+    await widget.db.addToPlayHistory(song.id);
   }
 
   void _navigateToArtistDetail(Artist artist) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ArtistDetailPage(db: widget.db, artist: artist),
+        builder: (_) => ArtistDetailPage(db: widget.db, artist: artist),
       ),
     );
   }
 
-
-
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<SuggestedData>(
-      future: _dataFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: Colors.green),
-          );
-        }
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: FutureBuilder<SuggestedData>(
+          future: _dataFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: CircularProgressIndicator(color: Colors.green),
+              );
+            }
 
-        if (!snapshot.hasData) return const SizedBox();
+            if (snapshot.hasError) {
+              return Center(
+                child: Text(
+                  'Error: ${snapshot.error}',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              );
+            }
 
-        final data = snapshot.data!;
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              RecentlyPlayedSection(
-                songs: data.recentlyPlayed,
-                onSongTap: _playSong,
+            final data = snapshot.data!;
+            return RefreshIndicator(
+              onRefresh: () async {
+                setState(() {
+                  _dataFuture = _fetchData();
+                });
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RecentlyPlayedSection(
+                      songs: data.recentlyPlayed,
+                      onSongTap: _playSong,
+                    ),
+                    const SizedBox(height: 32),
+                    PopularSection(
+                      songs: data.popularSongs,
+                      onSongTap: _playSong,
+                    ),
+                    const SizedBox(height: 32),
+                    ArtistSection(
+                      artists: data.artists,
+                      onArtistTap: _navigateToArtistDetail,
+                    ),
+                    const SizedBox(height: 100),
+                  ],
+                ),
               ),
-              const SizedBox(height: 24),
-              PopularSection(
-                songs: data.popularSongs,
-                onSongTap: _playSong,
-              ),
-              const SizedBox(height: 24),
-              ArtistSection(
-                  artists: data.artists, onArtistTap: _navigateToArtistDetail),
-              const SizedBox(height: 80),
-            ],
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ),
     );
   }
 }

@@ -24,6 +24,9 @@ class _GlobalMiniPlayerState extends State<GlobalMiniPlayer> {
   @override
   void initState() {
     super.initState();
+    playerService.addListener(() {
+      if (mounted) setState(() {});
+    });
     playerService.player.onPlayerStateChanged.listen((state) {
       if (mounted) setState(() {});
     });
@@ -41,14 +44,14 @@ class _GlobalMiniPlayerState extends State<GlobalMiniPlayer> {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.grey[900],
-        border: const Border(top: BorderSide(color: Colors.white10, width: 0.5)),
+        border:
+            const Border(top: BorderSide(color: Colors.white10, width: 0.5)),
         boxShadow: [
           BoxShadow(color: Colors.black.withAlpha(50), blurRadius: 10),
         ],
       ),
       child: Column(
         children: [
-          // --- SEEK BAR WITH BEGINNING AND ENDING TIME ---
           StreamBuilder<Duration>(
             stream: playerService.player.onPositionChanged,
             builder: (context, posSnapshot) {
@@ -65,8 +68,10 @@ class _GlobalMiniPlayerState extends State<GlobalMiniPlayer> {
                       SliderTheme(
                         data: SliderTheme.of(context).copyWith(
                           trackHeight: 2,
-                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
-                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+                          thumbShape: const RoundSliderThumbShape(
+                              enabledThumbRadius: 4),
+                          overlayShape:
+                              const RoundSliderOverlayShape(overlayRadius: 10),
                           activeTrackColor: Colors.green,
                           inactiveTrackColor: Colors.white10,
                           thumbColor: Colors.green,
@@ -74,7 +79,8 @@ class _GlobalMiniPlayerState extends State<GlobalMiniPlayer> {
                         child: Slider(
                           value: value.clamp(0.0, max > 0 ? max : 1.0),
                           max: max > 0 ? max : 1.0,
-                          onChanged: (v) => playerService.seek(Duration(milliseconds: v.toInt())),
+                          onChanged: (v) => playerService
+                              .seek(Duration(milliseconds: v.toInt())),
                         ),
                       ),
                       // Time Labels Row
@@ -85,11 +91,13 @@ class _GlobalMiniPlayerState extends State<GlobalMiniPlayer> {
                           children: [
                             Text(
                               _formatDuration(position),
-                              style: const TextStyle(color: Colors.grey, fontSize: 11),
+                              style: const TextStyle(
+                                  color: Colors.grey, fontSize: 11),
                             ),
                             Text(
                               _formatDuration(duration),
-                              style: const TextStyle(color: Colors.grey, fontSize: 11),
+                              style: const TextStyle(
+                                  color: Colors.grey, fontSize: 11),
                             ),
                           ],
                         ),
@@ -112,10 +120,10 @@ class _GlobalMiniPlayerState extends State<GlobalMiniPlayer> {
                     children: [
                       Text(
                         currentSong.name,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold),
                         overflow: TextOverflow.ellipsis,
                       ),
-                      
                     ],
                   ),
                 ),
@@ -125,7 +133,9 @@ class _GlobalMiniPlayerState extends State<GlobalMiniPlayer> {
                 ),
                 IconButton(
                   icon: Icon(
-                    isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                    isPlaying
+                        ? Icons.pause_circle_filled
+                        : Icons.play_circle_filled,
                     color: Colors.green,
                     size: 45,
                   ),
@@ -141,7 +151,7 @@ class _GlobalMiniPlayerState extends State<GlobalMiniPlayer> {
                 IconButton(
                   icon: const Icon(Icons.close, color: Colors.grey, size: 20),
                   onPressed: () {
-                    playerService.stop();
+                    playerService.stopAndClear();
                     setState(() {});
                   },
                 ),

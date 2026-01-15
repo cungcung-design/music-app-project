@@ -1,3 +1,7 @@
-- [x] Add playlist getter to AudioPlayerService
-- [x] Import playing_song_page.dart in mini_player.dart
-- [x] Wrap artwork Container with GestureDetector for navigation to NowPlayingPage
+- [x] Update lib/user/pages/songs_page.dart to set playlist before playing song
+- [x] Update lib/user/pages/favourite_page.dart to set playlist before playing song
+- [ ] Update lib/user/pages/suggested_page.dart to set playlist before playing song
+- [ ] Update lib/user/widgets/artist_detail_page.dart to set playlist before playing song
+- [ ] Update lib/admin/pages/manage_songs_page.dart to set playlist before playing song
+- [ ] Update lib/admin/pages/album_detail_page.dart to set playlist before playing song
+- [ ] Test prev and next functionality in MiniPlayer
