@@ -47,7 +47,7 @@ class _SearchPageState extends State<SearchPage> {
       appBar: AppBar(
         backgroundColor:Colors.transparent,
         elevation: 0,
-        toolbarHeight: 90, 
+        toolbarHeight: 60, 
         centerTitle: true,
         title: Padding(
           padding: const EdgeInsets.only(top: 10.0), 

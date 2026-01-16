@@ -22,12 +22,14 @@ class _FavoritesPageState extends State<FavoritesPage> {
   void initState() {
     super.initState();
     _fetchInitialData();
+
+    // Listen for favorites changes if your DatabaseService emits events
     _favoritesSubscription = widget.db.favoritesChanged.listen((_) {
       _refreshData();
     });
   }
 
-  /// Initial load from Database
+  /// Initial load
   Future<void> _fetchInitialData() async {
     try {
       final songs = await widget.db.getFavorites();
@@ -42,33 +44,16 @@ class _FavoritesPageState extends State<FavoritesPage> {
     }
   }
 
-  /// Refresh logic (used when returning from NowPlayingPage)
+  /// Refresh data (reload from DB)
   Future<void> _refreshData() async {
     final songs = await widget.db.getFavorites();
-    if (mounted && !_areListsEqual(_localSongs, songs)) {
-      setState(() => _localSongs = songs);
-    }
+    if (mounted) setState(() => _localSongs = songs);
   }
 
-  /// Pull-to-refresh logic
-  Future<void> _onPullRefresh() async {
-    final songs = await widget.db.getFavorites();
-    if (mounted) {
-      setState(() => _localSongs = songs);
-    }
-  }
+  /// Pull-to-refresh
+  Future<void> _onPullRefresh() async => _refreshData();
 
-  bool _areListsEqual(List<Song>? list1, List<Song>? list2) {
-    if (list1 == null && list2 == null) return true;
-    if (list1 == null || list2 == null) return false;
-    if (list1.length != list2.length) return false;
-    for (int i = 0; i < list1.length; i++) {
-      if (list1[i].id != list2[i].id) return false;
-    }
-    return true;
-  }
-
-  /// Plays song and refreshes on return to catch changes made in NowPlayingPage
+  /// Play a song
   Future<void> _playSong(Song song, List<Song> playlist) async {
     final service = AudioPlayerService();
     service.setPlaylist(playlist);
@@ -79,30 +64,26 @@ class _FavoritesPageState extends State<FavoritesPage> {
       MaterialPageRoute(builder: (_) => NowPlayingPage(song: song)),
     );
 
-    // Refresh immediately upon returning in case the user unfavorited the song there
     _refreshData();
   }
 
-  /// INSTANT REMOVAL (Optimistic UI)
+  /// Remove from favorites
   Future<void> _removeFromFavorites(String songId) async {
-    // 1. Store a backup in case the database call fails
     final originalList = List<Song>.from(_localSongs ?? []);
 
-    // 2. Update UI instantly
     setState(() {
       _localSongs?.removeWhere((s) => s.id == songId);
     });
 
     try {
-      // 3. Attempt database removal
       await widget.db.removeFromFavorites(songId);
     } catch (e) {
-      // 4. If it fails, roll back the UI to the original state
       setState(() => _localSongs = originalList);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Failed to update favorites. Please try again.')),
+            content: Text('Failed to update favorites. Please try again.'),
+          ),
         );
       }
     }
@@ -127,8 +108,10 @@ class _FavoritesPageState extends State<FavoritesPage> {
         children: [
           Icon(Icons.favorite_border, size: 64, color: Colors.grey),
           SizedBox(height: 16),
-          Text('No Favorites yet',
-              style: TextStyle(color: Colors.grey, fontSize: 18)),
+          Text(
+            'No Favorites yet',
+            style: TextStyle(color: Colors.grey, fontSize: 18),
+          ),
         ],
       ),
     );
@@ -139,13 +122,15 @@ class _FavoritesPageState extends State<FavoritesPage> {
       onRefresh: _onPullRefresh,
       color: Colors.green,
       backgroundColor: Colors.black,
-      child: ListView.builder(
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(vertical:18),
         itemCount: _localSongs!.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 2),
         itemBuilder: (_, i) {
           final song = _localSongs![i];
           return ListTile(
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                const EdgeInsets.symmetric(horizontal: 16, vertical:2),
             leading: ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: song.albumImage != null
@@ -185,5 +170,11 @@ class _FavoritesPageState extends State<FavoritesPage> {
       color: Colors.grey[800],
       child: const Icon(Icons.music_note, color: Colors.green),
     );
+  }
+
+  @override
+  void dispose() {
+    _favoritesSubscription?.cancel();
+    super.dispose();
   }
 }

@@ -46,17 +46,14 @@ class _UserProfileViewDetail extends State<UserProfileViewDetail> {
           filePath, bytes,
           fileOptions: const FileOptions(upsert: true));
 
-      // Get public URL
       final String publicUrl = Supabase.instance.client.storage
           .from('avatars')
           .getPublicUrl(filePath);
 
-      // Update profile in database
       await Supabase.instance.client
           .from('profiles')
           .update({'avatar_url': publicUrl}).eq('id', user.id);
 
-      // Refresh UI
       setState(() {});
 
       if (mounted) {
@@ -176,7 +173,6 @@ class _UserProfileViewDetail extends State<UserProfileViewDetail> {
 
                 // 2. Information Items
                 _profileItem("Email", db.currentUser?.email ?? 'No email'),
-                _profileItem("Display Name", profile?.name ?? 'Not set'),
                 _profileItem(
                   "Date of Birth",
                   (profile?.dob != null && profile!.dob!.isNotEmpty)
