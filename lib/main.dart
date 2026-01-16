@@ -67,19 +67,42 @@ class _MyAppState extends State<MyApp> {
         home: LoginPage(),
       );
     }
+    return FutureBuilder(
+      future: db.getProfile(user.id),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const MaterialApp(
+            debugShowCheckedModeBanner: false,
+            home: Scaffold(
+              backgroundColor: Colors.black,
+              body:
+                  Center(child: CircularProgressIndicator(color: Colors.green)),
+            ),
+          );
+        }
 
-    // Step 2: Admin user → go to AdminHomePage
-    if (user.email == 'admin@example.com') {
-      return const MaterialApp(
-        debugShowCheckedModeBanner: false,
-        home: AdminHomePage(),
-      );
-    }
+        if (snapshot.hasData && snapshot.data != null) {
+          final profile = snapshot.data!;
+          final role = profile.role;
 
-    // Step 3: Normal logged-in user → UserHomePage
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: UserHomePage(),
+          if (role == 'admin') {
+            return const MaterialApp(
+              debugShowCheckedModeBanner: false,
+              home: AdminHomePage(),
+            );
+          } else {
+            return const MaterialApp(
+              debugShowCheckedModeBanner: false,
+              home: UserHomePage(),
+            );
+          }
+        }
+
+        return const MaterialApp(
+          debugShowCheckedModeBanner: false,
+          home: LoginPage(),
+        );
+      },
     );
   }
 }

@@ -4,6 +4,7 @@ import '../../services/database_service.dart';
 import '../../models/profile.dart';
 import '../../models/song.dart';
 import 'profile_form_page.dart';
+import '../../auth/login_page.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({Key? key}) : super(key: key);
@@ -119,12 +120,14 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 _buildMenuTile(Icons.settings, "Settings"),
                 _buildMenuTile(Icons.info_outline, "About"),
                 const Divider(color: Colors.white10),
-
-                // Logout Button
                 _buildMenuTile(Icons.logout, "Logout", color: Colors.redAccent,
-                    onTap: () {
-                  // Add your logout logic here
-                  print("User logged out");
+                    onTap: () async {
+                  await db.logout();
+                  if (!mounted) return;
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                    (route) => false,
+                  );
                 }),
               ],
             ),
@@ -134,7 +137,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
     );
   }
 
-  // Helper method to keep code clean
   Widget _buildMenuTile(IconData icon, String title,
       {Color color = Colors.white, VoidCallback? onTap, String? subtitle}) {
     return ListTile(

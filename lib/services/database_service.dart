@@ -46,19 +46,16 @@ class DatabaseService {
       return value;
     }
 
-    // storage path
     return supabase.storage.from(bucket).getPublicUrl(value);
   }
 
   static String? resolveImageUrl(String? value, String bucket) {
     if (value == null || value.isEmpty) return null;
 
-    // Case 1: Already a full URL
     if (value.startsWith('http://') || value.startsWith('https://')) {
       return value;
     }
 
-    // Case 2: Storage path → convert to public URL
     return Supabase.instance.client.storage.from(bucket).getPublicUrl(value);
   }
 
@@ -70,11 +67,12 @@ class DatabaseService {
     required String email,
     required String password,
     required String name,
+    String role = 'user',
   }) async {
     final res = await supabase.auth.signUp(email: email, password: password);
     if (res.user != null) {
-      await createProfileIfNotExists(res.user!.id, email, name);
-    } else if (res.session == null) {
+      await createProfileIfNotExists(res.user!.id, email, name, role: role);
+    } else {
       throw Exception('Signup failed');
     }
   }
@@ -144,6 +142,13 @@ class DatabaseService {
   }
 
   // -------------------------------
+  // UPDATE USER ROLE
+  // -------------------------------
+  Future<void> updateUserRole(String userId, String role) async {
+    await supabase.from('profiles').update({'role': role}).eq('id', userId);
+  }
+
+  // -------------------------------
   // SAVE PROFILE (with default name if null)
   // -------------------------------
   Future<void> saveProfile(Profile profile) async {
@@ -200,16 +205,18 @@ class DatabaseService {
   // CREATE PROFILE IF NOT EXISTS
   // -------------------------------
   Future<void> createProfileIfNotExists(
-    String userId,
-    String email,
-    String name,
-  ) async {
-    final existing = await getProfile(userId);
+      String userId, String email, String name,
+      {String role = 'user'}) async {
+    final existing =
+        await supabase.from('profiles').select().eq('id', userId).maybeSingle();
+
     if (existing == null) {
       await supabase.from('profiles').insert({
         'id': userId,
         'email': email,
         'name': name,
+        'role': role,
+        'created_at': DateTime.now().toIso8601String(),
       });
     }
   }
@@ -768,14 +775,12 @@ class DatabaseService {
     required Uint8List newBytes,
     required String fileName,
   }) async {
-    // 1️⃣ Get old audio
     final old = await supabase
         .from('songs')
         .select('audio_url')
         .eq('id', songId)
         .maybeSingle();
 
-    // 2️⃣ Delete old file
     if (old != null && old['audio_url'] != null) {
       await supabase.storage.from('song_audio').remove([old['audio_url']]);
     }

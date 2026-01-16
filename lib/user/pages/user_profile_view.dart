@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
 import '../../services/database_service.dart';
 import '../../models/profile.dart';
 import 'edit_profile_page.dart';
@@ -11,64 +10,77 @@ class UserProfileViewDetail extends StatefulWidget {
   const UserProfileViewDetail({super.key});
 
   @override
-  State<UserProfileViewDetail> createState() => _UserProfileViewDetail();
+  State<UserProfileViewDetail> createState() => _UserProfileViewDetailState();
 }
 
-class _UserProfileViewDetail extends State<UserProfileViewDetail> {
+class _UserProfileViewDetailState extends State<UserProfileViewDetail> {
   final DatabaseService db = DatabaseService();
+  bool _isUploading = false;
 
-  // Fetches current user profile data
   Future<Profile?> _fetchProfile() async {
     final user = db.currentUser;
     if (user == null) return null;
     return await db.getProfile(user.id);
   }
 
-  // Image update logic
   Future<void> _updateProfileImage() async {
     try {
       final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
       if (image == null) return;
 
       final user = db.currentUser;
       if (user == null) return;
 
-      // Generate unique filename
-      final String fileName =
-          'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      setState(() => _isUploading = true);
+
+      final String fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final String filePath = 'user_avatars/${user.id}/$fileName';
-
-      // Upload to Supabase Storage
       final bytes = await image.readAsBytes();
+
       await Supabase.instance.client.storage.from('avatars').uploadBinary(
-          filePath, bytes,
-          fileOptions: const FileOptions(upsert: true));
+            filePath, bytes,
+            fileOptions: const FileOptions(upsert: true),
+          );
 
-      final String publicUrl = Supabase.instance.client.storage
-          .from('avatars')
-          .getPublicUrl(filePath);
+      final String publicUrl = Supabase.instance.client.storage.from('avatars').getPublicUrl(filePath);
 
-      await Supabase.instance.client
-          .from('profiles')
-          .update({'avatar_url': publicUrl}).eq('id', user.id);
-
-      setState(() {});
+      await Supabase.instance.client.from('profiles').update({'avatar_url': publicUrl}).eq('id', user.id);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile image updated successfully!')),
-        );
+        setState(() => _isUploading = false);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Image updated!')));
       }
     } catch (e) {
-      print('Error updating profile image: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update profile image: $e')),
-        );
-      }
+      setState(() => _isUploading = false);
     }
+  }
+
+  // Helper with Bordered Container and ListTile
+  Widget _borderedProfileItem({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900]!.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white10, width: 1), // The Border
+      ),
+      child: ListTile(
+        leading: Icon(icon, color: Colors.green, size: 24),
+        title: Text(
+          title,
+          style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+        ),
+      ),
+    );
   }
 
   @override
@@ -80,10 +92,11 @@ class _UserProfileViewDetail extends State<UserProfileViewDetail> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            Navigator.pop(context);
+          },
         ),
-        title: const Text("Profile",
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text("My Profile", style: TextStyle(color: Colors.white)),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit, color: Colors.green),
@@ -91,14 +104,9 @@ class _UserProfileViewDetail extends State<UserProfileViewDetail> {
               final profile = await _fetchProfile();
               final updated = await Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => EditProfilePage(profile: profile),
-                ),
+                MaterialPageRoute(builder: (_) => EditProfilePage(profile: profile)),
               );
-
-              if (updated == true) {
-                setState(() {});
-              }
+              if (updated == true) setState(() {});
             },
           )
         ],
@@ -106,15 +114,13 @@ class _UserProfileViewDetail extends State<UserProfileViewDetail> {
       body: FutureBuilder<Profile?>(
         future: _fetchProfile(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-                child: CircularProgressIndicator(color: Colors.green));
+          if (snapshot.connectionState == ConnectionState.waiting && !_isUploading) {
+            return const Center(child: CircularProgressIndicator(color: Colors.green));
           }
-
           final profile = snapshot.data;
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: Column(
               children: [
                 const SizedBox(height: 20),
@@ -122,103 +128,59 @@ class _UserProfileViewDetail extends State<UserProfileViewDetail> {
                   child: Stack(
                     children: [
                       CircleAvatar(
-                        radius: 65,
+                        radius: 60,
                         backgroundColor: Colors.grey[900],
-                        backgroundImage: (profile?.avatarUrl != null &&
-                                profile!.avatarUrl!.isNotEmpty)
-                            ? NetworkImage(
-                                "${profile.avatarUrl}?v=${DateTime.now().millisecondsSinceEpoch}")
+                        backgroundImage: (profile?.avatarUrl != null && profile!.avatarUrl!.isNotEmpty)
+                            ? NetworkImage("${profile.avatarUrl}?v=${DateTime.now().millisecondsSinceEpoch}")
                             : null,
-                        child: (profile?.avatarUrl == null ||
-                                profile!.avatarUrl!.isEmpty)
-                            ? const Icon(Icons.person,
-                                size: 70, color: Colors.white70)
+                        child: (profile?.avatarUrl == null || profile!.avatarUrl!.isEmpty)
+                            ? const Icon(Icons.person, size: 60, color: Colors.white70)
                             : null,
                       ),
                       Positioned(
                         bottom: 0,
-                        right: 4,
+                        right: 0,
                         child: GestureDetector(
                           onTap: _updateProfileImage,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.green,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.black, // Makes it pop
-                                width: 3,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt,
-                              color: Colors.white,
-                              size: 20,
-                            ),
+                          child: CircleAvatar(
+                            radius: 18,
+                            backgroundColor: Colors.green,
+                            child: Icon(Icons.camera_alt, color: Colors.white, size: 18),
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 15),
-                Text(
-                  profile?.name ?? 'User Name',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 40),
 
-                // 2. Information Items
-                _profileItem("Email", db.currentUser?.email ?? 'No email'),
-                _profileItem(
-                  "Date of Birth",
-                  (profile?.dob != null && profile!.dob!.isNotEmpty)
-                      ? DateFormat.yMMMEd().format(DateTime.parse(profile.dob!))
+                // Bordered Information Items
+                _borderedProfileItem(
+                  title: "NAME",
+                  subtitle: profile?.name ?? 'Not set',
+                  icon: Icons.person,
+                ),
+                _borderedProfileItem(
+                  title: "EMAIL",
+                  subtitle: db.currentUser?.email ?? 'No email',
+                  icon: Icons.email,
+                ),
+                _borderedProfileItem(
+                  title: "DATE OF BIRTH",
+                  subtitle: (profile?.dob != null && profile!.dob!.isNotEmpty)
+                      ? DateFormat.yMMMMd().format(DateTime.parse(profile.dob!))
                       : 'Not set',
+                  icon: Icons.cake,
                 ),
-                _profileItem("Country", profile?.country ?? 'Not set'),
-
-                const SizedBox(height: 20),
-                ListTile(
-                  leading: const Icon(Icons.logout, color: Colors.redAccent),
-                  title: const Text("Log Out",
-                      style: TextStyle(color: Colors.redAccent)),
-                  onTap: () {
-                    // Add your logout logic here
-                  },
+                _borderedProfileItem(
+                  title: "COUNTRY",
+                  subtitle: profile?.country ?? 'Not set',
+                  icon: Icons.location_on,
                 ),
               ],
             ),
           );
         },
-      ),
-    );
-  }
-
-  // UI helper for info cards
-  Widget _profileItem(String label, String value) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-          const SizedBox(height: 6),
-          Text(value,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500)),
-        ],
       ),
     );
   }

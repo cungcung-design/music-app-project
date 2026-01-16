@@ -1,13 +1,14 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Profile {
-  final String id; // User ID (from Supabase Auth)
-  final String email; // User email
-  final String? name; // User name (optional)
-  final String? avatarPath; // file name in Supabase
-  String? avatarUrl; // public URL
-  final String? dob; // Optional date of birth
-  final String? country; // Optional country
+  final String id;
+  final String email;
+  final String? name;
+  final String? avatarPath;
+  String? avatarUrl;
+  final String? dob;
+  final String? country;
+  final String? role;
 
   Profile({
     required this.id,
@@ -17,6 +18,7 @@ class Profile {
     this.avatarUrl,
     this.dob,
     this.country,
+    this.role,
   });
 
   static String? resolveUrl({
@@ -59,6 +61,7 @@ class Profile {
       avatarUrl: url,
       dob: map['dob'],
       country: map['country'],
+      role: map['role'],
     );
   }
 }

@@ -123,7 +123,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
       color: Colors.green,
       backgroundColor: Colors.black,
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(vertical:18),
+        padding: const EdgeInsets.symmetric(vertical:38),
         itemCount: _localSongs!.length,
         separatorBuilder: (_, __) => const SizedBox(height: 2),
         itemBuilder: (_, i) {

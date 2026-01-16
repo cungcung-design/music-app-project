@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:project/admin/pages/manage_user_page.dart';
-import '../../services/audio_player_service.dart'; // Import your service
-import '../widgets/mini_player_buttom.dart'; // Import your player
+import '../../services/audio_player_service.dart';
+import '../widgets/mini_player_buttom.dart'; 
 import 'dashboard_page.dart';
 import 'manage_songs_page.dart';
 import 'manage_artists_page.dart';
 import 'manage_albums_page.dart';
+import 'set_admin_page.dart';
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
@@ -18,18 +19,21 @@ class _AdminHomePageState extends State<AdminHomePage> {
   int selectedIndex = 0;
   int refreshCounter = 0;
 
-  // Instance of the global audio service
   final AudioPlayerService playerService = AudioPlayerService();
 
   List<Widget> get pages => [
-    DashboardPage(key: selectedIndex == 0 ? ValueKey(refreshCounter) : null),
-    ManageSongsPage(key: selectedIndex == 1 ? ValueKey(refreshCounter) : null),
-    ManageArtistsPage(
-      key: selectedIndex == 2 ? ValueKey(refreshCounter) : null,
-    ),
-    ManageAlbumsPage(key: selectedIndex == 3 ? ValueKey(refreshCounter) : null),
-    ManageUsersPage(key: selectedIndex == 4 ? ValueKey(refreshCounter) : null),
-  ];
+        DashboardPage(
+            key: selectedIndex == 0 ? ValueKey(refreshCounter) : null),
+        ManageSongsPage(
+            key: selectedIndex == 1 ? ValueKey(refreshCounter) : null),
+        ManageArtistsPage(
+          key: selectedIndex == 2 ? ValueKey(refreshCounter) : null,
+        ),
+        ManageAlbumsPage(
+            key: selectedIndex == 3 ? ValueKey(refreshCounter) : null),
+        ManageUsersPage(
+            key: selectedIndex == 4 ? ValueKey(refreshCounter) : null),
+      ];
 
   final List<String> titles = [
     'Dashboard',
@@ -87,6 +91,13 @@ class _AdminHomePageState extends State<AdminHomePage> {
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SetAdminPage()),
+            ),
+            icon: const Icon(Icons.admin_panel_settings, color: Colors.grey),
+          ),
           IconButton(
             onPressed: _handleRefresh,
             icon: const Icon(Icons.refresh_rounded, color: Colors.grey),
