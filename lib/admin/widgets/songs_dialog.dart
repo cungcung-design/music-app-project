@@ -233,7 +233,6 @@ class _SongDialogState extends State<SongDialog> {
             }
 
             if (widget.song == null) {
-              // ADD
               await widget.db.addSong(
                 id: songId,
                 name: nameController.text.trim(),
