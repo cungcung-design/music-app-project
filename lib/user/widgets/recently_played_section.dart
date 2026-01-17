@@ -217,7 +217,6 @@ class RecentlyPlayedSection extends StatelessWidget {
                               ),
                       ),
                       const SizedBox(width: 12),
-                      // Text Info
                       Expanded(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,

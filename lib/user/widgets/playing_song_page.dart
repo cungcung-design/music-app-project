@@ -57,7 +57,6 @@ class _NowPlayingPageState extends State<NowPlayingPage>
   Future<void> _toggleFavorite() async {
     final bool originalStatus = _isFavorited;
 
-    // Update UI first (Optimistic)
     setState(() => _isFavorited = !_isFavorited);
 
     try {
@@ -85,7 +84,6 @@ class _NowPlayingPageState extends State<NowPlayingPage>
 
       _isPlaying = _service.isPlaying;
 
-      // Handle Animation State
       if (_isPlaying) {
         if (!_rotationController.isAnimating) {
           _rotationController.repeat();
@@ -131,7 +129,6 @@ class _NowPlayingPageState extends State<NowPlayingPage>
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // IMAGE ROTATION SECTION
           RotationTransition(
             turns: _rotationController,
             child: CircleAvatar(
@@ -148,7 +145,6 @@ class _NowPlayingPageState extends State<NowPlayingPage>
 
           const SizedBox(height: 32),
 
-          // SONG INFO SECTION
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(

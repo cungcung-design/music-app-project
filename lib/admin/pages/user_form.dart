@@ -7,7 +7,7 @@ import '../../utils/toast.dart';
 import 'package:uuid/uuid.dart';
 
 class UserFormPage extends StatefulWidget {
-  final Profile? user; // null = Add User, not null = Edit User
+  final Profile? user; 
   const UserFormPage({super.key, this.user});
 
   @override

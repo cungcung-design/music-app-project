@@ -13,7 +13,6 @@ class MiniPlayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ListenableBuilder ensures the player updates globally
     return ListenableBuilder(
       listenable: AudioPlayerService(),
       builder: (context, _) {

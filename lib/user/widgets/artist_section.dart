@@ -34,7 +34,6 @@ class _ArtistSectionState extends State<ArtistSection> {
           ),
         ),
 
-        // --- ARTIST LIST ---
         SizedBox(
           height: 160,
           child: ListView.builder(
@@ -50,7 +49,6 @@ class _ArtistSectionState extends State<ArtistSection> {
                   padding: const EdgeInsets.only(right: 14),
                   child: Column(
                     children: [
-                      // 🎤 ARTIST IMAGE
                       Container(
                         width: 90,
                         height: 90,
@@ -75,7 +73,6 @@ class _ArtistSectionState extends State<ArtistSection> {
 
                       const SizedBox(height: 8),
 
-                      // 🧑 ARTIST NAME
                       SizedBox(
                         width: 90,
                         child: Text(

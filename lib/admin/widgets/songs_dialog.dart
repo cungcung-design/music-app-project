@@ -86,7 +86,6 @@ class _SongDialogState extends State<SongDialog> {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                // ---------- SONG NAME ----------
                 TextFormField(
                   controller: nameController,
                   style: const TextStyle(color: Colors.white),
@@ -99,7 +98,6 @@ class _SongDialogState extends State<SongDialog> {
                 ),
                 const SizedBox(height: 12),
 
-                // ---------- ARTIST ----------
                 DropdownButtonFormField<String>(
                   value: artists.any((a) => a.id == selectedArtistId)
                       ? selectedArtistId
@@ -128,7 +126,6 @@ class _SongDialogState extends State<SongDialog> {
                 ),
                 const SizedBox(height: 12),
 
-                // ---------- ALBUM ----------
                 DropdownButtonFormField<String>(
                   value: albums.any((a) => a.id == selectedAlbumId)
                       ? selectedAlbumId
@@ -157,7 +154,6 @@ class _SongDialogState extends State<SongDialog> {
                 ),
                 const SizedBox(height: 12),
 
-                // ---------- AUDIO PICK ----------
                 ElevatedButton.icon(
                   icon: const Icon(Icons.audiotrack),
                   label: Text(
@@ -197,7 +193,6 @@ class _SongDialogState extends State<SongDialog> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text("Delete"),
             onPressed: () async {
-              // Handle storage-only songs differently
               if (widget.song!.artistId.isEmpty &&
                   widget.song!.albumId.isEmpty) {
                 // Storage-only song, delete from storage
@@ -210,7 +205,6 @@ class _SongDialogState extends State<SongDialog> {
                   showToast(context, "Storage song deleted");
                 }
               } else {
-                // Database song
                 await widget.db.deleteSong(widget.song!.id);
                 showToast(context, "Song deleted");
               }

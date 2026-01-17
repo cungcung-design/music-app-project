@@ -30,7 +30,6 @@ class _ManageSongsPageState extends State<ManageSongsPage> {
     super.initState();
     loadAll();
 
-    // Listen to global player changes to refresh the "playing" icons in this list
     playerService.player.onPlayerStateChanged.listen((_) {
       if (mounted) setState(() {});
     });
@@ -50,10 +49,8 @@ class _ManageSongsPageState extends State<ManageSongsPage> {
     });
   }
 
-  // --- PLAYBACK LOGIC ---
   void _startPlayback(Song song) async {
     if (song.audioUrl == null) return;
-    // Set the full list as the playlist for Next/Prev support
     playerService.setPlaylist(songs);
     playerService.playSong(song);
     setState(() {}); 

@@ -55,7 +55,6 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                     ),
                   ),
 
-                  // Gradient
                   Container(
                     height: 220,
                     decoration: const BoxDecoration(
@@ -70,7 +69,6 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                     ),
                   ),
 
-                  // Back button
             Positioned(
   top: 40,
   left: 12,
@@ -96,13 +94,12 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                 ],
               ),
 
-              // Popular Songs Title
               const Padding(
                 padding: EdgeInsets.all(16),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    "Popular Songs",
+                    "all songs Songs",
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -112,7 +109,6 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                 ),
               ),
 
-              // Songs List
               Expanded(
                 child: FutureBuilder<List<Song>>(
                   future: songsFuture,
@@ -189,7 +185,6 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
             ],
           ),
 
-          // 🎵 Mini Player
           const Align(
             alignment: Alignment.bottomCenter,
             child: MiniPlayer(),
