@@ -7,7 +7,7 @@ import '../../utils/toast.dart';
 import 'package:uuid/uuid.dart';
 
 class UserFormPage extends StatefulWidget {
-  final Profile? user; 
+  final Profile? user;
   const UserFormPage({super.key, this.user});
 
   @override
@@ -56,7 +56,9 @@ class _UserFormPageState extends State<UserFormPage> {
       if (_selectedImage != null) {
         // If editing, use existing user id, otherwise generate new
         final userId = isEdit ? widget.user!.id : const Uuid().v4();
-        avatarPath = await db.uploadAvatar(_selectedImage!, userId);
+        final bytes = await _selectedImage!.readAsBytes();
+        avatarPath = await db.uploadAvatar(userId, bytes,
+            fileExtension: _selectedImage!.path.split('.').last);
       }
 
       if (isEdit) {
@@ -110,17 +112,17 @@ class _UserFormPageState extends State<UserFormPage> {
                   backgroundImage: _selectedImage != null
                       ? FileImage(_selectedImage!)
                       : (widget.user?.avatarUrl != null
-                            ? NetworkImage(widget.user!.avatarUrl!)
-                                  as ImageProvider
-                            : null),
+                          ? NetworkImage(widget.user!.avatarUrl!)
+                              as ImageProvider
+                          : null),
                   child:
                       _selectedImage == null && widget.user?.avatarUrl == null
-                      ? const Icon(
-                          Icons.camera_alt,
-                          color: Colors.black,
-                          size: 50,
-                        )
-                      : null,
+                          ? const Icon(
+                              Icons.camera_alt,
+                              color: Colors.black,
+                              size: 50,
+                            )
+                          : null,
                 ),
               ),
               const SizedBox(height: 16),

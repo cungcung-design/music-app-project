@@ -79,7 +79,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
     try {
       String? uploadedAvatar = avatarUrl;
       if (selectedImage != null) {
-        uploadedAvatar = await db.uploadAvatar(selectedImage!, user.id);
+        final bytes = await selectedImage!.readAsBytes();
+        uploadedAvatar = await db.uploadAvatar(user.id, bytes,
+            fileExtension: selectedImage!.path.split('.').last);
       }
 
       await db.updateProfile(
@@ -112,56 +114,61 @@ class _EditProfilePageState extends State<EditProfilePage> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         leading: IconButton(
-  icon: const Icon(Icons.arrow_back, color: Colors.white),
-  onPressed: () {
-    Navigator.pop(context);
-  },
-),
-        title: Text(widget.isNewUser ? "Complete Profile" : "Edit Profile" , style: TextStyle(color:Colors.white),),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+        title: Text(
+          widget.isNewUser ? "Complete Profile" : "Edit Profile",
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: Colors.black,
       ),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-       GestureDetector(
-  onTap: _pickImage, // optional: you can remove if you only want icon to change
-  child: Stack(
-    children: [
-      CircleAvatar(
-        radius: 55,
-        backgroundColor: Colors.grey[800],
-        backgroundImage: selectedImage != null
-            ? FileImage(selectedImage!)
-            : avatarUrl != null
-                ? NetworkImage(
-                    "$avatarUrl?v=${DateTime.now().millisecondsSinceEpoch}")
-                as ImageProvider
-                : null,
-        child: selectedImage == null && avatarUrl == null
-            ? const Icon(Icons.person, size: 50, color: Colors.white70)
-            : null,
-      ),
- Positioned(
-      bottom: 0,
-      right: 0,
-      child: GestureDetector(
-        onTap: _pickImage,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.green, 
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.black, width: 2),
-          ),
-          padding: const EdgeInsets.all(6),
-          child: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
-        ),
-      ),
- )
-    ],
-  ),
-),
-
+            GestureDetector(
+              onTap:
+                  _pickImage, // optional: you can remove if you only want icon to change
+              child: Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 55,
+                    backgroundColor: Colors.grey[800],
+                    backgroundImage: selectedImage != null
+                        ? FileImage(selectedImage!)
+                        : avatarUrl != null
+                            ? NetworkImage(
+                                    "$avatarUrl?v=${DateTime.now().millisecondsSinceEpoch}")
+                                as ImageProvider
+                            : null,
+                    child: selectedImage == null && avatarUrl == null
+                        ? const Icon(Icons.person,
+                            size: 50, color: Colors.white70)
+                        : null,
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.black, width: 2),
+                        ),
+                        padding: const EdgeInsets.all(6),
+                        child: const Icon(Icons.camera_alt,
+                            size: 20, color: Colors.white),
+                      ),
+                    ),
+                  )
+                ],
+              ),
+            ),
             const SizedBox(height: 30),
             _inputField("Full Name", nameController),
             const SizedBox(height: 16),

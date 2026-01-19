@@ -58,7 +58,9 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
     try {
       String? avatarUrl;
       if (selectedImage != null) {
-        avatarUrl = await db.uploadAvatar(selectedImage!, user.id);
+        final bytes = await selectedImage!.readAsBytes();
+        avatarUrl = await db.uploadAvatar(user.id, bytes,
+            fileExtension: selectedImage!.path.split('.').last);
       }
 
       await db.updateProfile(

@@ -69,6 +69,12 @@ class DatabaseService {
     required String name,
     String role = 'user',
   }) async {
+    // Check if user already exists
+    final existingProfile = await getProfileByEmail(email);
+    if (existingProfile != null) {
+      throw Exception('An account with this email already exists');
+    }
+
     final res = await supabase.auth.signUp(email: email, password: password);
     if (res.user != null) {
       await createProfileIfNotExists(res.user!.id, email, name, role: role);
@@ -168,7 +174,7 @@ class DatabaseService {
   // -------------------------------
   Future<void> saveProfile(Profile profile) async {
     final user = currentUser;
-    if (user == null) throw Exception('User not logged in');
+    if (user == null) return;
 
     final nameToSave = (profile.name == null || profile.name!.isEmpty)
         ? 'Unknown'
@@ -186,34 +192,20 @@ class DatabaseService {
   // -------------------------------
   // UPLOAD AVATAR (OPTIONAL)
   // -------------------------------
-  Future<String> uploadAvatar(
-    File file,
-    String userId, {
-    String? oldPath,
-  }) async {
-    final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final path = 'user_avatars/$userId/$fileName';
+  Future<String> uploadAvatar(String userId, Uint8List bytes,
+      {required String fileExtension}) async {
+    final String fileName = '$userId.$fileExtension';
 
-    // 1️⃣ Remove old avatar if exists
-    if (oldPath != null && oldPath.isNotEmpty) {
-      try {
-        await supabase.storage.from('profiles').remove([oldPath]);
-      } catch (e) {
-        print('Failed to delete old avatar: $e'); // optional: just log error
-      }
-    }
-
-    // 2️⃣ Upload new avatar
-    await supabase.storage.from('profiles').upload(
-          path,
-          file,
-          fileOptions: const FileOptions(
+    await supabase.storage.from('profiles').uploadBinary(
+          fileName,
+          bytes,
+          fileOptions: FileOptions(
             upsert: true,
-            contentType: 'image/jpeg',
+            contentType: 'image/$fileExtension',
           ),
         );
 
-    return path; // return new path
+    return fileName;
   }
 
   // -------------------------------
@@ -831,7 +823,7 @@ class DatabaseService {
   // -------------------- FAVORITES --------------------
   Future<void> addToFavorites(String songId) async {
     final user = currentUser;
-    if (user == null) throw Exception('User not logged in');
+    if (user == null) return;
 
     // Check if already favorite
     final existing = await supabase
@@ -853,7 +845,7 @@ class DatabaseService {
 
   Future<void> removeFromFavorites(String songId) async {
     final user = currentUser;
-    if (user == null) throw Exception('User not logged in');
+    if (user == null) return;
     await supabase
         .from('user_favorites')
         .delete()

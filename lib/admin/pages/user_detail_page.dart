@@ -51,7 +51,9 @@ class _UserDetailPageState extends State<UserDetailPage> {
       String? avatarPath;
 
       if (_selectedImage != null) {
-        avatarPath = await db.uploadAvatar(_selectedImage!, widget.user.id);
+        final bytes = await _selectedImage!.readAsBytes();
+        avatarPath = await db.uploadAvatar(widget.user.id, bytes,
+            fileExtension: _selectedImage!.path.split('.').last);
       }
 
       await db.updateProfile(
@@ -77,12 +79,15 @@ class _UserDetailPageState extends State<UserDetailPage> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color.fromARGB(255, 253, 253, 253)),
+          icon: const Icon(Icons.arrow_back,
+              color: Color.fromARGB(255, 253, 253, 253)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Edit User' , style: TextStyle(color: Color.fromARGB(255, 237, 236, 236)),),
+        title: const Text(
+          'Edit User',
+          style: TextStyle(color: Color.fromARGB(255, 237, 236, 236)),
+        ),
         backgroundColor: const Color.fromARGB(255, 18, 18, 18),
-        
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -99,22 +104,37 @@ class _UserDetailPageState extends State<UserDetailPage> {
                   backgroundImage: _selectedImage != null
                       ? FileImage(_selectedImage!)
                       : (widget.user.avatarUrl != null
-                          ? NetworkImage(widget.user.avatarUrl!) as ImageProvider
+                          ? NetworkImage(widget.user.avatarUrl!)
+                              as ImageProvider
                           : null),
                   child: _selectedImage == null && widget.user.avatarUrl == null
-                      ? const Icon(Icons.camera_alt, color: Colors.black, size: 50)
+                      ? const Icon(Icons.camera_alt,
+                          color: Colors.black, size: 50)
                       : null,
                 ),
               ),
               const SizedBox(height: 16),
 
-              _buildField(controller: nameController, label: 'Name', icon: Icons.person),
+              _buildField(
+                  controller: nameController,
+                  label: 'Name',
+                  icon: Icons.person),
               const SizedBox(height: 12),
-              _buildField(controller: emailController, label: 'Email', icon: Icons.email, enabled: false),
+              _buildField(
+                  controller: emailController,
+                  label: 'Email',
+                  icon: Icons.email,
+                  enabled: false),
               const SizedBox(height: 12),
-              _buildField(controller: countryController, label: 'Country', icon: Icons.public),
+              _buildField(
+                  controller: countryController,
+                  label: 'Country',
+                  icon: Icons.public),
               const SizedBox(height: 12),
-              _buildField(controller: dobController, label: 'Date of Birth', icon: Icons.cake),
+              _buildField(
+                  controller: dobController,
+                  label: 'Date of Birth',
+                  icon: Icons.cake),
               const SizedBox(height: 24),
 
               ElevatedButton(

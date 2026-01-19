@@ -6,7 +6,6 @@ import 'dashboard_page.dart';
 import 'manage_songs_page.dart';
 import 'manage_artists_page.dart';
 import 'manage_albums_page.dart';
-import 'set_admin_page.dart';
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
@@ -103,13 +102,10 @@ class _AdminHomePageState extends State<AdminHomePage> {
           const SizedBox(width: 8),
         ],
       ),
-      // --- THE PERSISTENT PLAYER LOGIC ---
       body: Stack(
         children: [
-          // The actual page content
           pages[selectedIndex],
 
-          // The Mini Player anchored to the bottom
           Positioned(bottom: 0, left: 0, right: 0, child: GlobalMiniPlayer()),
         ],
       ),

@@ -1,14 +1,14 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:image_picker/image_picker.dart'; // Add this
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../services/database_service.dart';
-import '../../models/profile.dart';
-import '/home_page.dart';
+import '../../home_page.dart';
+import 'package:intl/intl.dart';
 
 class ProfileFormPage extends StatefulWidget {
   final bool afterSignup;
   final String? initialName;
+
   const ProfileFormPage(
       {super.key, this.afterSignup = false, this.initialName});
 
@@ -17,142 +17,121 @@ class ProfileFormPage extends StatefulWidget {
 }
 
 class _ProfileFormPageState extends State<ProfileFormPage> {
-  final DatabaseService db = DatabaseService();
+  final db = DatabaseService();
 
   final nameController = TextEditingController();
   final countryController = TextEditingController();
   final dobController = TextEditingController();
 
+  String? _imagePath; // path in Supabase
+  String? _imageUrl; // public URL
   DateTime? _selectedDate;
-  String? _imageUrl; // To store the uploaded image URL
-  bool _isLoading = false;
-  bool _isFetching = true;
-  bool _isUploading = false;
+
+  bool _loading = false;
+  bool _uploading = false;
 
   @override
   void initState() {
     super.initState();
-    _loadExistingProfile();
+    _loadProfile();
   }
 
-  Future<void> _loadExistingProfile() async {
-    final profile = await db.getProfile(db.currentUser!.id);
-    if (profile != null) {
-      nameController.text = profile.name ?? '';
-      countryController.text = profile.country ?? '';
-      _imageUrl = profile.avatarUrl;
-      if (profile.dob != null) {
-        _selectedDate = DateTime.parse(profile.dob!);
-        dobController.text = DateFormat.yMMMMd().format(_selectedDate!);
-      }
-    } else if (widget.afterSignup && widget.initialName != null) {
-      // Pre-fill name from signup if no existing profile
-      nameController.text = widget.initialName!;
-    }
-    setState(() => _isFetching = false);
-  }
+  Future<void> _loadProfile() async {
+    final user = db.currentUser;
+    if (user == null) return;
 
-  // --- Image Upload Logic ---
-  Future<void> _pickAndUploadImage() async {
     try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 70,
-      );
+      final profile = await db.getProfile(user.id);
+      if (profile != null) {
+        nameController.text = profile.name ?? widget.initialName ?? '';
+        countryController.text = profile.country ?? '';
+        _imagePath = profile.avatarPath;
+        if (_imagePath != null) {
+          _imageUrl = db.getStorageUrl(_imagePath!, 'profiles');
+        }
+        if (profile.dob != null) {
+          _selectedDate = DateTime.tryParse(profile.dob!);
+          if (_selectedDate != null) {
+            dobController.text = DateFormat.yMMMMd().format(_selectedDate!);
+          }
+        }
+      } else if (widget.initialName != null) {
+        nameController.text = widget.initialName!;
+      }
+    } catch (e) {
+  }
 
-      if (image == null) return;
+  Future<void> _pickAndUploadAvatar() async {
+    final picker = ImagePicker();
+    final XFile? image =
+        await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (image == null) return;
 
-      setState(() => _isUploading = true);
-
-      final user = db.currentUser;
-      final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final filePath = 'user_avatars/${user!.id}/$fileName';
+    setState(() => _uploading = true);
+    try {
       final bytes = await image.readAsBytes();
+      final extension = image.path.split('.').last;
 
-      // Upload to Storage
-      await Supabase.instance.client.storage.from('profiles').uploadBinary(
-            filePath,
-            bytes,
-            fileOptions: const FileOptions(upsert: true),
-          );
-
-      // Get Public URL
-      final String publicUrl = Supabase.instance.client.storage
-          .from('profiles')
-          .getPublicUrl(filePath);
+      final newPath = await db.uploadAvatar(
+        db.currentUser!.id,
+        bytes,
+        fileExtension: extension,
+      );
 
       setState(() {
-        _imageUrl = publicUrl;
-        _isUploading = false;
+        _imagePath = newPath;
+        _imageUrl = db.getStorageUrl(newPath, 'profiles');
       });
-    } catch (e) {
-      setState(() => _isUploading = false);
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Upload failed: $e")),
-      );
+          const SnackBar(content: Text("Image uploaded successfully!")));
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Upload failed: $e")));
+    } finally {
+      setState(() => _uploading = false);
     }
   }
 
   Future<void> _saveProfile() async {
-    if (nameController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter your name")),
-      );
+    if (nameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Name is required")));
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() => _loading = true);
     try {
-      final userId = db.currentUser?.id;
-      if (userId == null) return;
+      await db.updateProfile(
+        userId: db.currentUser!.id,
+        name: nameController.text.trim(),
+        country: countryController.text.trim(),
+        dob: _selectedDate?.toIso8601String(),
+        avatarPath: _imagePath,
+      );
 
-      await Supabase.instance.client.from('profiles').upsert({
-        'id': userId,
-        'name': nameController.text.trim(),
-        'country': countryController.text.trim(),
-        'dob': _selectedDate?.toIso8601String(),
-        'avatar_url': _imageUrl, // Save image URL to DB
-      });
+      if (!mounted) return;
 
-      if (mounted) {
-        if (widget.afterSignup) {
-          Navigator.pushReplacement(
-              context, MaterialPageRoute(builder: (_) => const UserHomePage()));
-        } else {
-          Navigator.pop(context);
-        }
+      if (widget.afterSignup) {
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => const UserHomePage()));
+      } else {
+        Navigator.pop(context);
       }
     } catch (e) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Error: $e")));
+          .showSnackBar(SnackBar(content: Text("Save failed: $e")));
     } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _selectDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime(2000),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null) {
-      setState(() {
-        _selectedDate = picked;
-        dobController.text = DateFormat.yMMMMd().format(picked);
-      });
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isFetching) {
+    if (_fetching) {
       return const Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(child: CircularProgressIndicator(color: Colors.green)),
-      );
+          backgroundColor: Colors.black,
+          body: Center(child: CircularProgressIndicator(color: Colors.green)));
     }
 
     return Scaffold(
@@ -166,112 +145,122 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            // --- Profile Image Upload Section ---
-            Center(
-              child: Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 60,
-                    backgroundColor: Colors.grey[900],
-                    backgroundImage:
-                        (_imageUrl != null && _imageUrl!.isNotEmpty)
-                            ? NetworkImage(_imageUrl!)
-                            : null,
-                    child: (_imageUrl == null || _imageUrl!.isEmpty)
-                        ? const Icon(Icons.person,
-                            size: 60, color: Colors.white70)
-                        : null,
-                  ),
-                  if (_isUploading)
-                    const Positioned.fill(
-                      child: CircularProgressIndicator(color: Colors.green),
-                    ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: GestureDetector(
-                      onTap: _isUploading ? null : _pickAndUploadImage,
-                      child: const CircleAvatar(
-                        radius: 18,
-                        backgroundColor: Colors.green,
-                        child: Icon(Icons.camera_alt,
-                            color: Colors.black, size: 18),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _buildAvatarSection(),
             const SizedBox(height: 30),
-
-            _buildInputField("Full Name", nameController, icon: Icons.person),
+            _buildTextField("Full Name", nameController, Icons.person),
             const SizedBox(height: 16),
-
-            GestureDetector(
-              onTap: _selectDate,
-              child: AbsorbPointer(
-                child: _buildInputField("Date of Birth", dobController,
-                    icon: Icons.cake),
-              ),
-            ),
+            _buildDatePicker(),
             const SizedBox(height: 16),
-
-            _buildInputField("Country", countryController, icon: Icons.public),
-
+            _buildTextField("Country", countryController, Icons.public),
             const SizedBox(height: 40),
-
-            _isLoading
+            _loading
                 ? const CircularProgressIndicator(color: Colors.green)
-                : _buildLargeButton(
+                : _buildButton(
                     widget.afterSignup ? "Save & Continue" : "Update Profile",
-                    Colors.green,
-                    _saveProfile,
-                    textColor: Colors.black),
+                    _saveProfile),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInputField(String label, TextEditingController controller,
-      {required IconData icon}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            prefixIcon: Icon(icon, color: Colors.green, size: 20),
-            filled: true,
-            fillColor: Colors.grey[900],
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none),
+  Widget _buildAvatarSection() {
+    return Center(
+      child: Stack(
+        children: [
+          CircleAvatar(
+            radius: 60,
+            backgroundColor: Colors.grey[900],
+            backgroundImage:
+                _imageUrl != null ? NetworkImage(_imageUrl!) : null,
+            child: _imageUrl == null
+                ? const Icon(Icons.person, size: 60, color: Colors.white70)
+                : null,
           ),
-        ),
-      ],
+          if (_uploading)
+            const Positioned.fill(
+              child: CircularProgressIndicator(color: Colors.green),
+            ),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: GestureDetector(
+              onTap: _uploading ? null : _pickAndUploadAvatar,
+              child: const CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.green,
+                child: Icon(Icons.camera_alt, color: Colors.black, size: 18),
+              ),
+            ),
+          )
+        ],
+      ),
     );
   }
 
-  Widget _buildLargeButton(String text, Color bgColor, VoidCallback onPressed,
-      {Color textColor = Colors.white}) {
-    return SizedBox(
-      height: 55,
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: bgColor,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-        ),
-        child: Text(text,
-            style: TextStyle(
-                color: textColor, fontWeight: FontWeight.bold, fontSize: 16)),
+  Widget _buildTextField(
+      String label, TextEditingController controller, IconData icon) {
+    return TextField(
+      controller: controller,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon, color: Colors.grey),
+        hintText: label,
+        hintStyle: const TextStyle(color: Colors.grey),
+        filled: true,
+        fillColor: Colors.grey[900],
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none),
       ),
+    );
+  }
+
+  Widget _buildButton(String text, VoidCallback onTap) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30))),
+        child: Text(text,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  Widget _buildDatePicker() {
+    return TextField(
+      controller: dobController,
+      readOnly: true,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        prefixIcon: const Icon(Icons.calendar_today, color: Colors.grey),
+        hintText: "Date of Birth",
+        hintStyle: const TextStyle(color: Colors.grey),
+        filled: true,
+        fillColor: Colors.grey[900],
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none),
+      ),
+      onTap: () async {
+        final date = await showDatePicker(
+          context: context,
+          initialDate: _selectedDate ?? DateTime(2000),
+          firstDate: DateTime(1900),
+          lastDate: DateTime.now(),
+        );
+        if (date != null) {
+          setState(() {
+            _selectedDate = date;
+            dobController.text = DateFormat.yMMMMd().format(date);
+          });
+        }
+      },
     );
   }
 }

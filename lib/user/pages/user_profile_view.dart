@@ -26,7 +26,8 @@ class _UserProfileViewDetailState extends State<UserProfileViewDetail> {
   Future<void> _updateProfileImage() async {
     try {
       final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+      final XFile? image =
+          await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
       if (image == null) return;
 
       final user = db.currentUser;
@@ -34,25 +35,54 @@ class _UserProfileViewDetailState extends State<UserProfileViewDetail> {
 
       setState(() => _isUploading = true);
 
-      final String fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final String filePath = 'user_avatars/${user.id}/$fileName';
-      final bytes = await image.readAsBytes();
+      try {
+        final bytes = await image.readAsBytes();
+        final profile = await _fetchProfile();
 
-      await Supabase.instance.client.storage.from('avatars').uploadBinary(
-            filePath, bytes,
-            fileOptions: const FileOptions(upsert: true),
+        final newAvatarPath = await db.uploadAvatar(
+          user.id,
+          bytes,
+          fileExtension: image.path.split('.').last,
+        );
+
+        await db.updateProfile(
+          userId: user.id,
+          name: profile?.name ?? 'User',
+          avatarPath: newAvatarPath,
+          dob: profile?.dob,
+          country: profile?.country,
+        );
+
+        if (mounted) {
+          setState(() => _isUploading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Profile image updated successfully!'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
           );
-
-      final String publicUrl = Supabase.instance.client.storage.from('avatars').getPublicUrl(filePath);
-
-      await Supabase.instance.client.from('profiles').update({'avatar_url': publicUrl}).eq('id', user.id);
-
-      if (mounted) {
-        setState(() => _isUploading = false);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Image updated!')));
+          // Force refresh the profile data
+          setState(() {});
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isUploading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to update profile: $e')),
+          );
+        }
       }
     } catch (e) {
-      setState(() => _isUploading = false);
+      if (mounted) {
+        setState(() => _isUploading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick image: $e')),
+        );
+      }
     }
   }
 
@@ -73,11 +103,13 @@ class _UserProfileViewDetailState extends State<UserProfileViewDetail> {
         leading: Icon(icon, color: Colors.green, size: 24),
         title: Text(
           title,
-          style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+              color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
           subtitle,
-          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+          style: const TextStyle(
+              color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
         ),
       ),
     );
@@ -104,7 +136,8 @@ class _UserProfileViewDetailState extends State<UserProfileViewDetail> {
               final profile = await _fetchProfile();
               final updated = await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => EditProfilePage(profile: profile)),
+                MaterialPageRoute(
+                    builder: (_) => EditProfilePage(profile: profile)),
               );
               if (updated == true) setState(() {});
             },
@@ -114,8 +147,10 @@ class _UserProfileViewDetailState extends State<UserProfileViewDetail> {
       body: FutureBuilder<Profile?>(
         future: _fetchProfile(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting && !_isUploading) {
-            return const Center(child: CircularProgressIndicator(color: Colors.green));
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !_isUploading) {
+            return const Center(
+                child: CircularProgressIndicator(color: Colors.green));
           }
           final profile = snapshot.data;
 
@@ -130,11 +165,15 @@ class _UserProfileViewDetailState extends State<UserProfileViewDetail> {
                       CircleAvatar(
                         radius: 60,
                         backgroundColor: Colors.grey[900],
-                        backgroundImage: (profile?.avatarUrl != null && profile!.avatarUrl!.isNotEmpty)
-                            ? NetworkImage("${profile.avatarUrl}?v=${DateTime.now().millisecondsSinceEpoch}")
+                        backgroundImage: (profile?.avatarUrl != null &&
+                                profile!.avatarUrl!.isNotEmpty)
+                            ? NetworkImage(
+                                "${profile.avatarUrl}?v=${DateTime.now().millisecondsSinceEpoch}")
                             : null,
-                        child: (profile?.avatarUrl == null || profile!.avatarUrl!.isEmpty)
-                            ? const Icon(Icons.person, size: 60, color: Colors.white70)
+                        child: (profile?.avatarUrl == null ||
+                                profile!.avatarUrl!.isEmpty)
+                            ? const Icon(Icons.person,
+                                size: 60, color: Colors.white70)
                             : null,
                       ),
                       Positioned(
@@ -145,7 +184,8 @@ class _UserProfileViewDetailState extends State<UserProfileViewDetail> {
                           child: CircleAvatar(
                             radius: 18,
                             backgroundColor: Colors.green,
-                            child: Icon(Icons.camera_alt, color: Colors.white, size: 18),
+                            child: Icon(Icons.camera_alt,
+                                color: Colors.white, size: 18),
                           ),
                         ),
                       ),

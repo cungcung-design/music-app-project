@@ -1,8 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // Ensure this is imported
 import '../services/database_service.dart';
-import '../utils/toast.dart';
 import '../user/pages/profile_form_page.dart';
-import 'login_page.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -16,114 +16,94 @@ class _SignupPageState extends State<SignupPage> {
   final nameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
-  bool isLoading = false;
-  bool isAdmin = false;
 
-  // Email validation regex
-  final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+  bool loading = false;
+  int waitSeconds = 0;
+  Timer? _timer;
 
-  // Signup function with validation
-  Future<void> _signUpUser() async {
-    final name = nameController.text.trim();
-    final email = emailController.text.trim();
-    final password = passwordController.text.trim();
+  void startCountdown(int seconds) {
+    setState(() => waitSeconds = seconds);
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (waitSeconds == 0) {
+        timer.cancel();
+      } else {
+        setState(() => waitSeconds--);
+      }
+    });
+  }
 
-    // Validate name
-    if (name.isEmpty) {
-      showToast(context, "Please enter your full name", isError: true);
+  Future<void> _signUp() async {
+    if (nameController.text.isEmpty || emailController.text.isEmpty || passwordController.text.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fill all fields (Password min 6 chars)')));
       return;
     }
 
-    // Validate email
-    if (email.isEmpty || !emailRegex.hasMatch(email)) {
-      showToast(context, "Please enter a valid email address", isError: true);
-      return;
-    }
-
-    // Validate password
-    if (password.isEmpty || password.length < 6) {
-      showToast(context, "Password must be at least 6 characters",
-          isError: true);
-      return;
-    }
-
-    setState(() => isLoading = true);
+    setState(() => loading = true);
     try {
       await db.signUp(
-        name: name,
-        email: email,
-        password: password,
-        role: isAdmin ? 'admin' : 'user',
+        email: emailController.text.trim(), 
+        password: passwordController.text.trim(), 
+        name: nameController.text.trim()
       );
       if (!mounted) return;
-      showToast(context, "Signup successful!", isError: false);
+
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => ProfileFormPage(afterSignup: true, initialName: name),
-        ),
+        MaterialPageRoute(builder: (_) => ProfileFormPage(afterSignup: true, initialName: nameController.text.trim())),
       );
+    } on AuthApiException catch (e) {
+      if (e.code == 'over_email_send_rate_limit') {
+        startCountdown(45);
+      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
-      if (!mounted) return;
-      showToast(context, "Signup failed: ${e.toString()}", isError: true);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
-    if (mounted) setState(() => isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              const Icon(Icons.music_note, size: 80, color: Colors.green),
               const SizedBox(height: 20),
-              const Icon(Icons.music_note, color: Colors.green, size: 60),
-              const SizedBox(height: 20),
-              const Text(
-                "Create Account",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+              const Text("Create Account", style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 40),
+              
+              _inputField("Name", nameController, Icons.person_outline),
+              const SizedBox(height: 16),
+              _inputField("Email", emailController, Icons.email_outlined),
+              const SizedBox(height: 16),
+              _inputField("Password", passwordController, Icons.lock_outline, obscure: true),
+              
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: (waitSeconds == 0 && !loading) ? _signUp : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  ),
+                  child: loading 
+                    ? const CircularProgressIndicator(color: Colors.black) 
+                    : Text(waitSeconds > 0 ? 'Wait ${waitSeconds}s' : 'Sign Up', 
+                        style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                 ),
               ),
-              const SizedBox(height: 40),
-              _input(nameController, "Full Name", icon: Icons.person_outline),
-              const SizedBox(height: 16),
-              _input(emailController, "Email", icon: Icons.email_outlined),
-              const SizedBox(height: 16),
-              _input(passwordController, "Password",
-                  obscure: true, icon: Icons.lock_outline),
-              const SizedBox(height: 32),
-              _button("SIGN UP", _signUpUser),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    "Already have an account? ",
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Text(
-                      "Login",
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-                ],
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Already have an account? Login", style: TextStyle(color: Colors.grey)),
               ),
             ],
           ),
@@ -132,58 +112,25 @@ class _SignupPageState extends State<SignupPage> {
     );
   }
 
-  Widget _input(TextEditingController c, String h,
-      {bool obscure = false, IconData? icon}) {
+  Widget _inputField(String label, TextEditingController controller, IconData icon, {bool obscure = false}) {
     return TextField(
-      controller: c,
+      controller: controller,
       obscureText: obscure,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
-        hintText: h,
-        prefixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
-        hintStyle: const TextStyle(color: Colors.grey),
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.grey),
+        prefixIcon: Icon(icon, color: Colors.green),
         filled: true,
-        fillColor: Colors.grey[900],
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.green, width: 1),
-        ),
+        fillColor: Colors.white10,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
       ),
     );
   }
 
-  Widget _button(String text, VoidCallback onTap) {
-    return SizedBox(
-      width: double.infinity,
-      height: 55,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.black,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
-          ),
-        ),
-        onPressed: isLoading ? null : onTap,
-        child: isLoading
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                    color: Colors.black, strokeWidth: 2),
-              )
-            : Text(
-                text,
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-      ),
-    );
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 }

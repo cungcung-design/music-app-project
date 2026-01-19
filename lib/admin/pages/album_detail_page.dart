@@ -35,7 +35,6 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
     _songsFuture = _db.getSongsWithDetails();
     _refreshLocalList();
 
-    // Listen for state changes globally so the play icons in the list update
     _audio.player.onPlayerStateChanged.listen((state) {
       if (mounted) setState(() {});
     });
@@ -69,7 +68,6 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
       ),
       body: Column(
         children: [
-          // Header Section
           Stack(
             alignment: Alignment.bottomLeft,
             children: [
@@ -105,13 +103,12 @@ class _AlbumDetailPageState extends State<AlbumDetailPage> {
             ],
           ),
 
-          // Song List
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.only(
                 top: 10,
                 bottom: 120,
-              ), // Extra bottom padding for the mini player
+              ),
               itemCount: _albumSongs.length,
               itemBuilder: (context, index) {
                 final song = _albumSongs[index];

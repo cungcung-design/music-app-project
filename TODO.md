@@ -1,7 +1,6 @@
-- [x] Update lib/user/pages/songs_page.dart to set playlist before playing song
-- [x] Update lib/user/pages/favourite_page.dart to set playlist before playing song
-- [ ] Update lib/user/pages/suggested_page.dart to set playlist before playing song
-- [ ] Update lib/user/widgets/artist_detail_page.dart to set playlist before playing song
-- [ ] Update lib/admin/pages/manage_songs_page.dart to set playlist before playing song
-- [ ] Update lib/admin/pages/album_detail_page.dart to set playlist before playing song
-- [ ] Test prev and next functionality in MiniPlayer
+- [ ] Remove avatar section from the UI
+- [ ] Remove date picker field
+- [ ] Remove country field
+- [ ] Modify \_loadProfile to only fetch and set the name
+- [ ] Modify \_saveProfile to only save the name
+- [ ] Update the UI to show only the name field
