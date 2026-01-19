@@ -91,13 +91,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
-          IconButton(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SetAdminPage()),
-            ),
-            icon: const Icon(Icons.admin_panel_settings, color: Colors.grey),
-          ),
+         
           IconButton(
             onPressed: _handleRefresh,
             icon: const Icon(Icons.refresh_rounded, color: Colors.grey),

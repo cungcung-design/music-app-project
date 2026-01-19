@@ -123,6 +123,21 @@ class DatabaseService {
   }
 
   // -------------------------------
+  // GET PROFILE BY EMAIL
+  // -------------------------------
+  Future<Profile?> getProfileByEmail(String email) async {
+    final data = await supabase
+        .from('profiles')
+        .select()
+        .eq('email', email)
+        .maybeSingle();
+    if (data != null) {
+      return Profile.fromMap(data as Map<String, dynamic>, supabase: supabase);
+    }
+    return null;
+  }
+
+  // -------------------------------
   // UPDATE PROFILE
   // -------------------------------
   Future<void> updateProfile({
@@ -219,6 +234,19 @@ class DatabaseService {
         'created_at': DateTime.now().toIso8601String(),
       });
     }
+  }
+
+  // -------------------------------
+  // INSERT ADMIN PROFILE
+  // -------------------------------
+  Future<void> insertAdminProfile() async {
+    await supabase.from('profiles').insert({
+      'id': '45b98987-fbc0-4ac4-a38b-dff11008f7fc',
+      'email': 'admin@gmail.com',
+      'name': 'Admin',
+      'role': 'admin',
+      'created_at': DateTime.now().toIso8601String(),
+    });
   }
 
   // -------------------------------

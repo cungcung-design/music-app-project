@@ -173,11 +173,10 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
                   CircleAvatar(
                     radius: 60,
                     backgroundColor: Colors.grey[900],
-                    backgroundImage: (_imageUrl != null &&
-                            _imageUrl!.isNotEmpty)
-                        ? NetworkImage(
-                            "$_imageUrl?v=${DateTime.now().millisecondsSinceEpoch}")
-                        : null,
+                    backgroundImage:
+                        (_imageUrl != null && _imageUrl!.isNotEmpty)
+                            ? NetworkImage(_imageUrl!)
+                            : null,
                     child: (_imageUrl == null || _imageUrl!.isEmpty)
                         ? const Icon(Icons.person,
                             size: 60, color: Colors.white70)

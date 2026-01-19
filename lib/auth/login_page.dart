@@ -18,11 +18,13 @@ class _LoginPageState extends State<LoginPage> {
   final passwordController = TextEditingController();
   bool isLoading = false;
 
+  // Email validation regex
+  final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      // Using a SingleChildScrollView to prevent overflow when keyboard appears
       body: SingleChildScrollView(
         child: Container(
           height: MediaQuery.of(context).size.height,
@@ -40,50 +42,13 @@ class _LoginPageState extends State<LoginPage> {
                     fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 40),
-
               _input(emailController, "Email", icon: Icons.email_outlined),
               const SizedBox(height: 16),
               _input(passwordController, "Password",
                   obscure: true, icon: Icons.lock_outline),
               const SizedBox(height: 24),
-
-              _button("LOGIN", () async {
-                setState(() => isLoading = true);
-                try {
-                  await db.login(
-                    email: emailController.text.trim(),
-                    password: passwordController.text.trim(),
-                  );
-                  if (db.currentUser != null) {
-                    // Fetch user profile to check role
-                    final profile = await db.getProfile(db.currentUser!.id);
-                    final role = profile?.role;
-
-                    if (!mounted) return;
-
-                    if (role == 'admin') {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const AdminHomePage()),
-                      );
-                    } else {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const UserHomePage()),
-                      );
-                    }
-                  }
-                } catch (e) {
-                  if (!mounted) return;
-                  showToast(context, "Login failed", isError: true);
-                }
-                if (mounted) setState(() => isLoading = false);
-              }),
-
+              _button("LOGIN", _loginUser),
               const SizedBox(height: 20),
-
-              // Improved Navigation to Signup
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -116,15 +81,70 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // Updated input with icon support
-  Widget _input(TextEditingController c, String h,
+  // Login function
+  Future<void> _loginUser() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+
+    // Validate email
+    if (email.isEmpty || !emailRegex.hasMatch(email)) {
+      showToast(context, "Please enter a valid email address", isError: true);
+      return;
+    }
+
+    // Validate password
+    if (password.isEmpty || password.length < 6) {
+      showToast(context, "Password must be at least 6 characters",
+          isError: true);
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      // Supabase login
+      await db.login(email: email, password: password);
+
+      final user = db.currentUser;
+      if (user == null) {
+        showToast(context, "Login failed", isError: true);
+        return;
+      }
+
+      // Get profile and role
+      final profile = await db.getProfile(user.id);
+      final role = profile?.role ?? 'user';
+
+      if (!mounted) return;
+
+      if (role == 'admin') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminHomePage()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const UserHomePage()),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      showToast(context, "Invalid email or password", isError: true);
+    }
+
+    if (mounted) setState(() => isLoading = false);
+  }
+
+  // Input field
+  Widget _input(TextEditingController controller, String hint,
       {bool obscure = false, IconData? icon}) {
     return TextField(
-      controller: c,
+      controller: controller,
       obscureText: obscure,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
-        hintText: h,
+        hintText: hint,
         prefixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
         hintStyle: const TextStyle(color: Colors.grey),
         filled: true,
@@ -143,10 +163,11 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  // Button widget
   Widget _button(String text, VoidCallback onTap) {
     return SizedBox(
       width: double.infinity,
-      height: 55, 
+      height: 55,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.green,

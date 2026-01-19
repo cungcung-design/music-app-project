@@ -21,6 +21,10 @@ dependencies:
   simple_animations: ^5.2.0
   http: ^1.6.0
   intl: ^0.20.2
+  otp: ^3.0.1
+  qr_flutter: ^4.1.0
+  shared_preferences: ^2.2.2
+  encrypt: ^5.0.3
 
 dev_dependencies:
   flutter_test:

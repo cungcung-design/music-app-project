@@ -19,6 +19,57 @@ class _SignupPageState extends State<SignupPage> {
   bool isLoading = false;
   bool isAdmin = false;
 
+  // Email validation regex
+  final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+
+  // Signup function with validation
+  Future<void> _signUpUser() async {
+    final name = nameController.text.trim();
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+
+    // Validate name
+    if (name.isEmpty) {
+      showToast(context, "Please enter your full name", isError: true);
+      return;
+    }
+
+    // Validate email
+    if (email.isEmpty || !emailRegex.hasMatch(email)) {
+      showToast(context, "Please enter a valid email address", isError: true);
+      return;
+    }
+
+    // Validate password
+    if (password.isEmpty || password.length < 6) {
+      showToast(context, "Password must be at least 6 characters",
+          isError: true);
+      return;
+    }
+
+    setState(() => isLoading = true);
+    try {
+      await db.signUp(
+        name: name,
+        email: email,
+        password: password,
+        role: isAdmin ? 'admin' : 'user',
+      );
+      if (!mounted) return;
+      showToast(context, "Signup successful!", isError: false);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProfileFormPage(afterSignup: true, initialName: name),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showToast(context, "Signup failed: ${e.toString()}", isError: true);
+    }
+    if (mounted) setState(() => isLoading = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,32 +103,7 @@ class _SignupPageState extends State<SignupPage> {
               _input(passwordController, "Password",
                   obscure: true, icon: Icons.lock_outline),
               const SizedBox(height: 32),
-              _button("SIGN UP", () async {
-                setState(() => isLoading = true);
-                try {
-                  await db.signUp(
-                    name: nameController.text.trim(),
-                    email: emailController.text.trim(),
-                    password: passwordController.text.trim(),
-                    role: isAdmin ? 'admin' : 'user',
-                  );
-                  if (!mounted) return;
-                  showToast(context, "Signup successful!", isError: false);
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ProfileFormPage(
-                          afterSignup: true,
-                          initialName: nameController.text.trim()),
-                    ),
-                  );
-                } catch (e) {
-                  if (!mounted) return;
-                  showToast(context, "Signup failed: ${e.toString()}",
-                      isError: true);
-                }
-                if (mounted) setState(() => isLoading = false);
-              }),
+              _button("SIGN UP", _signUpUser),
               const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
