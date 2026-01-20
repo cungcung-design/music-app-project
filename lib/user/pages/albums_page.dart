@@ -20,7 +20,6 @@ class _AlbumsPageState extends State<AlbumsPage> {
     super.initState();
     _albumsFuture = widget.db.getAlbums();
   }
-
   Future<void> _refreshAlbums() async {
     setState(() {
       _albumsFuture = widget.db.getAlbums();

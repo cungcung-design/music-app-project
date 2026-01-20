@@ -20,12 +20,10 @@ class Album {
   }) {
     if (value == null || value.isEmpty) return null;
 
-    // already a full URL
     if (value.startsWith('http://') || value.startsWith('https://')) {
       return value;
     }
 
-    // storage path
     return supabase.storage.from(bucket).getPublicUrl(value);
   }
 

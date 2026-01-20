@@ -49,7 +49,7 @@ class Profile {
       try {
         url = resolveUrl(supabase: supabase, bucket: 'profiles', value: path);
       } catch (_) {
-        url = null; // If file missing or invalid, fallback to null
+        url = null; 
       }
     }
 

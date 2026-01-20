@@ -4,7 +4,6 @@ import '../../models/profile.dart';
 import 'user_detail_page.dart';
 import '../../utils/toast.dart';
 import '../widgets/add_user.dart';
-import "../pages/user_form.dart";
 
 class ManageUsersPage extends StatefulWidget {
   const ManageUsersPage({super.key});
@@ -33,21 +32,17 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-
-  
-
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.green,
         child: const Icon(Icons.add, color: Colors.black),
         onPressed: () async {
           final result = await Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const UserFormPage()),
+            MaterialPageRoute(builder: (_) => const AddUserPage()),
           );
           if (result == true) _refreshUsers();
         },
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: FutureBuilder<List<Profile>>(
@@ -106,7 +101,6 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
                           ? const Icon(Icons.person, color: Colors.black)
                           : null,
                     ),
-
                     title: Text(
                       user.name ?? 'No Name',
                       style: const TextStyle(color: Colors.white),

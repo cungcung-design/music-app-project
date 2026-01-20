@@ -11,7 +11,6 @@ class UserPlayHistory {
     required this.playedAt,
   });
 
-  /// Create model from Supabase row (Map)
   factory UserPlayHistory.fromMap(Map<String, dynamic> map) {
     return UserPlayHistory(
       id: map['id'] as String,

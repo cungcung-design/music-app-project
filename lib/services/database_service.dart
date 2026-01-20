@@ -122,7 +122,6 @@ class DatabaseService {
         throw Exception('Login failed - user not found');
       }
 
-      // Verify session was created
       if (res.session == null) {
         throw Exception('Login failed - session not created');
       }

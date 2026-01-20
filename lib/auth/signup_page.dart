@@ -113,8 +113,6 @@ class _SignupPageState extends State<SignupPage> {
                         style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                 ),
               ),
-              
-             
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: RichText(
@@ -154,8 +152,6 @@ return TextField(
     ),
   ),
 );
-
-
 
   }
 
