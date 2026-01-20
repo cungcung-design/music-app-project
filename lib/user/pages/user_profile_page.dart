@@ -33,7 +33,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   Future<int> _getRecentlyPlayedCount() async {
     final db = DatabaseService();
     final recentlyPlayed =
-        await db.getRecentlyPlayedSongs(limit: 20); // Large limit to get all
+        await db.getRecentlyPlayedSongs(limit: 20); 
     return recentlyPlayed.length;
   }
 

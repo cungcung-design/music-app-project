@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:project/auth/login_page.dart';
 import '../../services/database_service.dart';
 import '../../home_page.dart';
 import 'package:intl/intl.dart';
@@ -169,7 +170,9 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
 
       if (widget.afterSignup) {
         Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => const UserHomePage()));
+  context,
+  MaterialPageRoute(builder: (_) => const LoginPage()),
+);
       } else {
         Navigator.pop(context);
       }
