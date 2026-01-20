@@ -11,8 +11,8 @@ class ProfileFormPage extends StatefulWidget {
   final String? initialUserId;
 
   const ProfileFormPage({
-    super.key, 
-    this.afterSignup = false, 
+    super.key,
+    this.afterSignup = false,
     this.initialName,
     this.initialUserId,
   });
@@ -45,10 +45,10 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
 
   Future<void> _loadProfile() async {
     setState(() => _fetching = true);
-    
+
     // Use initialUserId if provided (from signup), otherwise get from currentUser
     String? userId = widget.initialUserId;
-    
+
     if (userId == null) {
       final user = db.currentUser;
       if (user == null) {
@@ -123,8 +123,10 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Image uploaded successfully!", style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Image uploaded successfully!",
+                style: TextStyle(color: Colors.white)),
+            backgroundColor: Colors.green));
       }
     } catch (e) {
       if (mounted) {
@@ -259,7 +261,7 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
       controller: controller,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
-        prefixIcon: Icon(icon, color: Colors.grey),
+        prefixIcon: Icon(icon, color: Colors.green),
         hintText: label,
         hintStyle: const TextStyle(color: Colors.grey),
         filled: true,
@@ -293,7 +295,7 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
       readOnly: true,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
-        prefixIcon: const Icon(Icons.calendar_today, color: Colors.grey),
+        prefixIcon: const Icon(Icons.calendar_today, color: Colors.green),
         hintText: "Date of Birth",
         hintStyle: const TextStyle(color: Colors.grey),
         filled: true,

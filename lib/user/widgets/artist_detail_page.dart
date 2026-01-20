@@ -99,7 +99,7 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    "all songs Songs",
+                    "All Songs",
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -124,7 +124,7 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                     final songs = snapshot.data!;
 
                     return ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 120),
+                      padding: const EdgeInsets.only(bottom: 100),
                       itemCount: songs.length,
                       itemBuilder: (context, index) {
                         final song = songs[index];

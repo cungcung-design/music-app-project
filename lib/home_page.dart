@@ -29,16 +29,15 @@ class _UserHomePageState extends State<UserHomePage> {
       child: Scaffold(
         backgroundColor: Colors.black,
 
-        // App bar only appears when the 'Home' tab (index 0) is selected
         appBar: selectedBottomIndex == 0
             ? AppBar(
                 backgroundColor: const Color.fromARGB(255, 7, 7, 7),
                 elevation: 0,
                 centerTitle: false,
-                leadingWidth: 60,
+                leadingWidth: 50,
                 titleSpacing: 0,
                 leading: Padding(
-                  padding: const EdgeInsets.only(left: 8),
+                  padding: const EdgeInsets.only(left: 12),
                   child: FutureBuilder<Profile?>(
                     future: db.getProfile(db.currentUser?.id ?? ''),
                     builder: (context, snapshot) {
@@ -52,22 +51,34 @@ class _UserHomePageState extends State<UserHomePage> {
                             ),
                           ).then((_) => setState(() {}));
                         },
-                        child: ClipOval(
+                        child: Center(
                           child: Container(
-                            width: 28,
-                            height: 28,
-                            color: Colors.grey[900],
-                            child: (profile?.avatarUrl != null &&
-                                    profile!.avatarUrl!.isNotEmpty)
-                                ? Image.network(
-                                    profile.avatarUrl!,
-                                    fit: BoxFit.cover,
-                                  )
-                                : const Icon(
-                                    Icons.person,
-                                    size: 16,
-                                    color: Colors.white,
-                                  ),
+                            width: 40,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.grey[900],
+                              border:
+                                  Border.all(color: Colors.white10, width: 0.5),
+                            ),
+                            child: ClipOval(
+                              child: (profile?.avatarUrl != null &&
+                                      profile!.avatarUrl!.isNotEmpty)
+                                  ? Image.network(
+                                      profile.avatarUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              const Icon(Icons.person,
+                                                  size: 18,
+                                                  color: Colors.white),
+                                    )
+                                  : const Icon(
+                                      Icons.person,
+                                      size: 18,
+                                      color: Colors.white,
+                                    ),
+                            ),
                           ),
                         ),
                       );
@@ -77,18 +88,19 @@ class _UserHomePageState extends State<UserHomePage> {
                 title: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: const [
-                    Icon(Icons.music_note, color: Colors.green, size: 40),
+                    Icon(Icons.music_note, color: Colors.green, size: 30),
                     SizedBox(width: 6),
                     Text(
                       'Spotify',
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 26,
+                        fontSize: 24,
                       ),
                     ),
                   ],
                 ),
+
                 bottom: const TabBar(
                   indicatorColor: Colors.green,
                   labelColor: Colors.green,
@@ -125,7 +137,7 @@ class _UserHomePageState extends State<UserHomePage> {
         bottomNavigationBar: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const MiniPlayer(), 
+            const MiniPlayer(),
             BottomNavigationBar(
               currentIndex: selectedBottomIndex,
               onTap: (index) {
@@ -139,9 +151,12 @@ class _UserHomePageState extends State<UserHomePage> {
               unselectedItemColor: Colors.grey,
               items: const [
                 BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-                BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favorites'),
-                BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-                BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.favorite), label: 'Favorites'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.search), label: 'Search'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.person), label: 'Profile'),
               ],
             ),
           ],

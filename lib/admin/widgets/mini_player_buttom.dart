@@ -40,7 +40,7 @@ class _GlobalMiniPlayerState extends State<GlobalMiniPlayer> {
     final bool isPlaying = playerService.player.state == PlayerState.playing;
 
     return Container(
-      height: 125, // Increased slightly to fit labels comfortably
+      height: 110,
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.grey[900],
