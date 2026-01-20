@@ -5,8 +5,9 @@ class Artist {
   final String name;
   final String? about;
   final String bio;
-  final String? artistProfilePath; // file name in Supabase
-  String? artistProfileUrl; // public URL
+  final String? artistProfilePath;
+  String? artistProfileUrl;
+  final int order;
 
   Artist({
     required this.id,
@@ -15,6 +16,7 @@ class Artist {
     required this.bio,
     this.artistProfilePath,
     this.artistProfileUrl,
+    this.order = 0,
   });
 
   static String? resolveUrl({
@@ -50,6 +52,7 @@ class Artist {
       about: map['about'],
       artistProfilePath: path,
       artistProfileUrl: url,
+      order: map['order'] ?? 0,
     );
   }
 
@@ -60,6 +63,7 @@ class Artist {
       'bio': bio,
       'about': about,
       'artist_url': artistProfilePath,
+      'order': order,
     };
   }
 }

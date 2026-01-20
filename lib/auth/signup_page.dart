@@ -109,12 +109,12 @@ class _SignupPageState extends State<SignupPage> {
                   ),
                   child: loading 
                     ? const CircularProgressIndicator(color: Colors.black) 
-                    : Text(waitSeconds > 0 ? 'Wait ${waitSeconds}s' : 'Sign Up', 
+                    : Text(waitSeconds > 0 ? 'Wait ${waitSeconds}s' : 'SIGN UP', 
                         style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                 ),
               ),
               
-              // UPDATED LOGIN TEXT COLOR AND NAVIGATION
+             
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: RichText(
@@ -143,7 +143,7 @@ return TextField(
   obscureText: obscure,
   style: const TextStyle(color: Colors.white),
   decoration: InputDecoration(
-    hintText: label, // stays inside the field
+    hintText: label, 
     hintStyle: const TextStyle(color: Colors.grey), 
     prefixIcon: Icon(icon, color: Colors.green),
     filled: true,

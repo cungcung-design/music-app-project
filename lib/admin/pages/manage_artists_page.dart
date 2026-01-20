@@ -96,7 +96,6 @@ class _ManageArtistsPageState extends State<ManageArtistsPage> {
   }
 
   @override
-
   Widget build(BuildContext context) {
     if (loading)
       return const Center(
@@ -111,7 +110,7 @@ class _ManageArtistsPageState extends State<ManageArtistsPage> {
         child: const Icon(Icons.add),
       ),
       body: ReorderableListView(
-        onReorder: (oldIndex, newIndex) {
+        onReorder: (oldIndex, newIndex) async {
           setState(() {
             if (newIndex > oldIndex) {
               newIndex -= 1;
@@ -119,6 +118,9 @@ class _ManageArtistsPageState extends State<ManageArtistsPage> {
             final artist = artists.removeAt(oldIndex);
             artists.insert(newIndex, artist);
           });
+          for (int i = 0; i < artists.length; i++) {
+            await db.updateArtistOrder(artists[i].id, i);
+          }
         },
         children: artists.map((artist) {
           return Card(

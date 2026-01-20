@@ -387,7 +387,7 @@ class DatabaseService {
 
   // ===================== ARTISTS =====================
   Future<List<Artist>> getArtists() async {
-    final data = await supabase.from('artists').select();
+    final data = await supabase.from('artists').select().order('order');
     final artists = List<Map<String, dynamic>>.from(
       data,
     ).map((e) => Artist.fromMap(e, supabase: supabase)).toList();
@@ -468,6 +468,10 @@ class DatabaseService {
       ]);
     }
     await supabase.from('artists').delete().eq('id', artistId);
+  }
+
+  Future<void> updateArtistOrder(String artistId, int order) async {
+    await supabase.from('artists').update({'order': order}).eq('id', artistId);
   }
 
   // ================= TABLE ALBUMS =================
