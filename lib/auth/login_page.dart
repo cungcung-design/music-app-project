@@ -18,8 +18,7 @@ class _LoginPageState extends State<LoginPage> {
   final passwordController = TextEditingController();
   bool isLoading = false;
 
-  // Email validation regex
-  final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +67,7 @@ class _LoginPageState extends State<LoginPage> {
                       style: TextStyle(
                         color: Colors.green,
                         fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline,
+                       
                       ),
                     ),
                   ),
@@ -87,7 +86,7 @@ class _LoginPageState extends State<LoginPage> {
     final password = passwordController.text.trim();
 
     // Validate email
-    if (email.isEmpty || !emailRegex.hasMatch(email)) {
+    if (email.isEmpty) {
       showToast(context, "Please enter a valid email address", isError: true);
       return;
     }
@@ -105,15 +104,27 @@ class _LoginPageState extends State<LoginPage> {
       // Supabase login
       await db.login(email: email, password: password);
 
+      // Wait a bit for session to be established
+      await Future.delayed(const Duration(milliseconds: 100));
+
       final user = db.currentUser;
       if (user == null) {
-        showToast(context, "Login failed", isError: true);
+        if (mounted) {
+          showToast(context, "Login failed - please try again", isError: true);
+        }
         return;
       }
 
-      // Get profile and role
-      final profile = await db.getProfile(user.id);
-      final role = profile?.role ?? 'user';
+      // Get profile and role - handle errors gracefully
+      String role = 'user';
+      try {
+        final profile = await db.getProfile(user.id);
+        role = profile?.role ?? 'user';
+      } catch (e) {
+        // If profile fetch fails, continue with default role
+        print('Warning: Could not fetch profile: $e');
+        role = 'user';
+      }
 
       if (!mounted) return;
 
@@ -130,7 +141,39 @@ class _LoginPageState extends State<LoginPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      showToast(context, "Invalid email or password", isError: true);
+      
+      // Show more specific error message
+      String errorMessage = "Login failed";
+      final errorString = e.toString().toLowerCase();
+      
+      // Extract the actual error message if it's wrapped in Exception
+      String actualError = e.toString();
+      if (actualError.contains('Exception: ')) {
+        actualError = actualError.split('Exception: ').last;
+        if (actualError.endsWith(')')) {
+          actualError = actualError.substring(0, actualError.length - 1);
+        }
+      }
+      
+      if (errorString.contains('invalid login credentials') ||
+          errorString.contains('invalid email or password') ||
+          errorString.contains('invalid request')) {
+        errorMessage = "Invalid email or password";
+      } else if (errorString.contains('email not confirmed')) {
+        errorMessage = "Please confirm your email before logging in";
+      } else if (errorString.contains('too many requests')) {
+        errorMessage = "Too many login attempts. Please wait a moment";
+      } else if (errorString.contains('user not found')) {
+        errorMessage = "No account found with this email";
+      } else if (errorString.contains('400') || errorString.contains('bad request')) {
+        errorMessage = "Invalid request. Please check your email format.";
+      } else {
+        // Show actual error for debugging
+        print('Login error details: $e');
+        errorMessage = actualError.isNotEmpty ? actualError : "Login failed. Please try again.";
+      }
+      
+      showToast(context, errorMessage, isError: true);
     }
 
     if (mounted) setState(() => isLoading = false);

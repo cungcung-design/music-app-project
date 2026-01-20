@@ -1,6 +1,7 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'dart:io';
 import 'package:uuid/uuid.dart';
 
 import '../../services/database_service.dart';
@@ -22,16 +23,15 @@ class SongDialog extends StatefulWidget {
 class _SongDialogState extends State<SongDialog> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
-
   final Uuid uuid = const Uuid();
 
   List<Artist> artists = [];
   List<Album> albums = [];
   bool isLoading = true;
+  bool _isSaving = false;
 
   String? selectedArtistId;
   String? selectedAlbumId;
-
   File? selectedAudio;
 
   @override
@@ -50,15 +50,23 @@ class _SongDialogState extends State<SongDialog> {
     try {
       final artistsData = await widget.db.getArtists();
       final albumsData = await widget.db.getAlbums();
-
       setState(() {
         artists = artistsData;
         albums = albumsData;
         isLoading = false;
       });
     } catch (e) {
-      isLoading = false;
+      setState(() => isLoading = false);
       showToast(context, "Failed to load data: $e", isError: true);
+    }
+  }
+
+  Future<void> _pickAudio() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.any);
+    if (result != null && result.files.single.path != null) {
+      setState(() {
+        selectedAudio = File(result.files.single.path!);
+      });
     }
   }
 
@@ -75,111 +83,121 @@ class _SongDialogState extends State<SongDialog> {
 
     return AlertDialog(
       backgroundColor: Colors.grey[900],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Text(
         widget.song == null ? "Add Song" : "Edit Song",
-        style: const TextStyle(color: Colors.white),
+        style:
+            const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
       ),
       content: Form(
         key: _formKey,
         child: SizedBox(
-          width: 320,
+          width: 340,
           child: SingleChildScrollView(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Song Name
                 TextFormField(
                   controller: nameController,
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: 'Song Name',
-                    hintStyle: TextStyle(color: Colors.grey),
+                    hintStyle: const TextStyle(color: Colors.grey),
+                    filled: true,
+                    fillColor: Colors.white10,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                   validator: (val) =>
                       val == null || val.isEmpty ? "Enter song name" : null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
+                // Artist Dropdown
                 DropdownButtonFormField<String>(
                   value: artists.any((a) => a.id == selectedArtistId)
                       ? selectedArtistId
                       : null,
                   dropdownColor: Colors.grey[800],
-                  decoration: const InputDecoration(
-                    hintText: 'Select Artist',
-                    hintStyle: TextStyle(color: Colors.grey),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white10,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                   style: const TextStyle(color: Colors.white),
+                  hint: const Text("Select Artist",
+                      style: TextStyle(color: Colors.grey)),
                   items: artists
-                      .map(
-                        (artist) => DropdownMenuItem(
-                          value: artist.id,
-                          child: Text(
-                            artist.name,
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      )
+                      .map((artist) => DropdownMenuItem(
+                            value: artist.id,
+                            child: Text(artist.name,
+                                style: const TextStyle(color: Colors.white)),
+                          ))
                       .toList(),
-                  onChanged: (val) => setState(() {
-                    selectedArtistId = val;
-                  }),
+                  onChanged: (val) => setState(() => selectedArtistId = val),
                   validator: (val) => val == null ? "Select artist" : null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
+                // Album Dropdown
                 DropdownButtonFormField<String>(
                   value: albums.any((a) => a.id == selectedAlbumId)
                       ? selectedAlbumId
                       : null,
                   dropdownColor: Colors.grey[800],
-                  decoration: const InputDecoration(
-                    hintText: 'Select Album',
-                    hintStyle: TextStyle(color: Colors.grey),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white10,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                   style: const TextStyle(color: Colors.white),
+                  hint: const Text("Select Album",
+                      style: TextStyle(color: Colors.grey)),
                   items: albums
-                      .map(
-                        (album) => DropdownMenuItem(
-                          value: album.id,
-                          child: Text(
-                            album.name,
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      )
+                      .map((album) => DropdownMenuItem(
+                            value: album.id,
+                            child: Text(album.name,
+                                style: const TextStyle(color: Colors.white)),
+                          ))
                       .toList(),
-                  onChanged: (val) => setState(() {
-                    selectedAlbumId = val;
-                  }),
+                  onChanged: (val) => setState(() => selectedAlbumId = val),
                   validator: (val) => val == null ? "Select album" : null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
-                ElevatedButton.icon(
+                // Pick Audio Button
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15)),
+                  ),
                   icon: const Icon(Icons.audiotrack),
                   label: Text(
                     widget.song == null
                         ? "Pick Audio"
                         : "Change Audio (optional)",
                   ),
-                  onPressed: () async {
-                    final result = await FilePicker.platform.pickFiles(
-                      type: FileType.audio,
-                    );
-
-                    if (result != null && result.files.single.path != null) {
-                      setState(() {
-                        selectedAudio = File(result.files.single.path!);
-                      });
-                    }
-                  },
+                  onPressed: _isSaving ? null : _pickAudio,
                 ),
 
+                // Audio name preview
                 if (selectedAudio != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
                       selectedAudio!.path.split('/').last,
-                      style: const TextStyle(color: Colors.green),
+                      style: const TextStyle(
+                          color: Colors.green, fontWeight: FontWeight.bold),
                     ),
                   ),
               ],
@@ -188,86 +206,75 @@ class _SongDialogState extends State<SongDialog> {
         ),
       ),
       actions: [
-        if (widget.song != null)
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text("Delete"),
-            onPressed: () async {
-              if (widget.song!.artistId.isEmpty &&
-                  widget.song!.albumId.isEmpty) {
-                if (widget.song!.audioUrl != null) {
-                  final uri = Uri.parse(widget.song!.audioUrl!);
-                  final path = uri.pathSegments.last;
-                  await widget.db.supabase.storage.from('song_audio').remove([
-                    path,
-                  ]);
-                  showToast(context, "Storage song deleted");
-                }
-              } else {
-                await widget.db.deleteSong(widget.song!.id);
-                showToast(context, "Song deleted");
-              }
-              Navigator.pop(context, true);
-            },
-          ),
+        // Cancel button (always visible)
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
           child: const Text('Cancel', style: TextStyle(color: Colors.white)),
         ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-          child: Text(widget.song == null ? "Add" : "Update"),
-          onPressed: () async {
-            if (!_formKey.currentState!.validate()) return;
 
-            if (widget.song == null && selectedAudio == null) {
-              showToast(context, "Audio is required", isError: true);
-              return;
-            }
-
-            final String songId = widget.song?.id ?? uuid.v4();
-            String? audioPath = widget.song?.audioUrl;
-
-            if (selectedAudio != null) {
-              audioPath = await widget.db.uploadSongAudio(file: selectedAudio!);
-            }
-
-            if (widget.song == null) {
-              await widget.db.addSong(
-                id: songId,
-                name: nameController.text.trim(),
-                artistId: selectedArtistId!,
-                albumId: selectedAlbumId!,
-                audioUrl: audioPath!,
-              );
-              showToast(context, "Song added ✅");
-            } else {
-              if (widget.song!.artistId.isEmpty &&
-                  widget.song!.albumId.isEmpty) {
-                await widget.db.addSong(
-                  id: uuid.v4(),
-                  name: nameController.text.trim(),
-                  artistId: selectedArtistId!,
-                  albumId: selectedAlbumId!,
-                  audioUrl: audioPath!,
-                );
-                showToast(context, "Storage song added to database ✅");
-              } else {
-                await widget.db.updateSong(
-                  id: widget.song!.id,
-                  name: nameController.text.trim(),
-                  artistId: selectedArtistId!,
-                  albumId: selectedAlbumId!,
-                  audioUrl: audioPath!,
-                );
-                showToast(context, "Song updated ✅");
-              }
-            }
-
-            Navigator.pop(context, true);
-          },
+        // Add / Update button
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.green,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          ),
+          onPressed: _isSaving ? null : _submitSong,
+          child: _isSaving
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white))
+              : Text(widget.song == null ? "Add" : "Update"),
         ),
       ],
     );
+  }
+
+  Future<void> _submitSong() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (widget.song == null && selectedAudio == null) {
+      showToast(context, "Audio is required", isError: true);
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      final String songId = widget.song?.id ?? uuid.v4();
+      String? audioPath = widget.song?.audioUrl;
+
+      if (selectedAudio != null) {
+        audioPath = await widget.db.uploadSongAudio(file: selectedAudio!);
+      }
+
+      if (widget.song == null) {
+        await widget.db.addSong(
+          id: songId,
+          name: nameController.text.trim(),
+          artistId: selectedArtistId!,
+          albumId: selectedAlbumId!,
+          audioUrl: audioPath!,
+        );
+        showToast(context, "Song added ");
+      } else {
+        await widget.db.updateSong(
+          id: widget.song!.id,
+          name: nameController.text.trim(),
+          artistId: selectedArtistId!,
+          albumId: selectedAlbumId!,
+          audioUrl: audioPath!,
+        );
+        showToast(context, "Song updated ");
+      }
+
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) showToast(context, "Failed to save song: $e", isError: true);
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 }

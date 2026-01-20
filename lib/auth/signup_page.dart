@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; // Ensure this is imported
+import 'package:supabase_flutter/supabase_flutter.dart'; 
 import '../services/database_service.dart';
 import '../user/pages/profile_form_page.dart';
 
@@ -41,16 +41,28 @@ class _SignupPageState extends State<SignupPage> {
 
     setState(() => loading = true);
     try {
-      await db.signUp(
+      final userId = await db.signUp(
         email: emailController.text.trim(), 
         password: passwordController.text.trim(), 
         name: nameController.text.trim()
       );
+      
       if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Account created successfully!', style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.green,
+        ),
+      );
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => ProfileFormPage(afterSignup: true, initialName: nameController.text.trim())),
+        MaterialPageRoute(builder: (_) => ProfileFormPage(
+          afterSignup: true, 
+          initialName: nameController.text.trim(),
+          initialUserId: userId,
+        )),
       );
     } on AuthApiException catch (e) {
       if (e.code == 'over_email_send_rate_limit') {
@@ -101,9 +113,22 @@ class _SignupPageState extends State<SignupPage> {
                         style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                 ),
               ),
+              
+              // UPDATED LOGIN TEXT COLOR AND NAVIGATION
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("Already have an account? Login", style: TextStyle(color: Colors.grey)),
+                child: RichText(
+                  text: const TextSpan(
+                    text: "Already have an account? ",
+                    style: TextStyle(color: Colors.grey),
+                    children: [
+                      TextSpan(
+                        text: "Login",
+                        style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -113,19 +138,25 @@ class _SignupPageState extends State<SignupPage> {
   }
 
   Widget _inputField(String label, TextEditingController controller, IconData icon, {bool obscure = false}) {
-    return TextField(
-      controller: controller,
-      obscureText: obscure,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.grey),
-        prefixIcon: Icon(icon, color: Colors.green),
-        filled: true,
-        fillColor: Colors.white10,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-      ),
-    );
+return TextField(
+  controller: controller,
+  obscureText: obscure,
+  style: const TextStyle(color: Colors.white),
+  decoration: InputDecoration(
+    hintText: label, // stays inside the field
+    hintStyle: const TextStyle(color: Colors.grey), 
+    prefixIcon: Icon(icon, color: Colors.green),
+    filled: true,
+    fillColor: Colors.white10,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(15),
+      borderSide: BorderSide.none,
+    ),
+  ),
+);
+
+
+
   }
 
   @override

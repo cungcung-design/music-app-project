@@ -115,18 +115,25 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
         backgroundColor: Colors.green,
         child: const Icon(Icons.add),
       ),
-
-      body: ListView.builder(
+      body: ReorderableListView(
         padding: const EdgeInsets.all(16),
-        itemCount: albums.length,
-        itemBuilder: (_, i) {
-          final album = albums[i];
+        onReorder: (oldIndex, newIndex) {
+          setState(() {
+            if (newIndex > oldIndex) {
+              newIndex -= 1;
+            }
+            final album = albums.removeAt(oldIndex);
+            albums.insert(newIndex, album);
+          });
+        },
+        children: albums.map((album) {
           final artist = artists.firstWhere(
             (a) => a.id == album.artistId,
             orElse: () => Artist(id: '', name: 'Unknown', bio: ''),
           );
 
           return Container(
+            key: ValueKey(album.id),
             margin: const EdgeInsets.only(bottom: 8),
             decoration: BoxDecoration(
               color: Colors.grey[900],
@@ -185,7 +192,7 @@ class _ManageAlbumsPageState extends State<ManageAlbumsPage> {
               ).then((_) => loadData()),
             ),
           );
-        },
+        }).toList(),
       ),
     );
   }

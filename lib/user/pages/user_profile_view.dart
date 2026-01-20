@@ -4,7 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/database_service.dart';
 import '../../models/profile.dart';
-import 'edit_profile_page.dart';
+import 'profile_form_page.dart';
 
 class UserProfileViewDetail extends StatefulWidget {
   const UserProfileViewDetail({super.key});
@@ -133,11 +133,10 @@ class _UserProfileViewDetailState extends State<UserProfileViewDetail> {
           IconButton(
             icon: const Icon(Icons.edit, color: Colors.green),
             onPressed: () async {
-              final profile = await _fetchProfile();
               final updated = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (_) => EditProfilePage(profile: profile)),
+                    builder: (_) => const ProfileFormPage(afterSignup: false)),
               );
               if (updated == true) setState(() {});
             },

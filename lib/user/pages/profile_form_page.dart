@@ -8,9 +8,14 @@ import 'package:intl/intl.dart';
 class ProfileFormPage extends StatefulWidget {
   final bool afterSignup;
   final String? initialName;
+  final String? initialUserId;
 
-  const ProfileFormPage(
-      {super.key, this.afterSignup = false, this.initialName});
+  const ProfileFormPage({
+    super.key, 
+    this.afterSignup = false, 
+    this.initialName,
+    this.initialUserId,
+  });
 
   @override
   State<ProfileFormPage> createState() => _ProfileFormPageState();
@@ -26,9 +31,11 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
   String? _imagePath; // path in Supabase
   String? _imageUrl; // public URL
   DateTime? _selectedDate;
+  String? _userId; // Store user ID from loaded profile
 
   bool _loading = false;
   bool _uploading = false;
+  bool _fetching = false;
 
   @override
   void initState() {
@@ -37,12 +44,29 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
   }
 
   Future<void> _loadProfile() async {
-    final user = db.currentUser;
-    if (user == null) return;
+    setState(() => _fetching = true);
+    
+    // Use initialUserId if provided (from signup), otherwise get from currentUser
+    String? userId = widget.initialUserId;
+    
+    if (userId == null) {
+      final user = db.currentUser;
+      if (user == null) {
+        if (mounted) setState(() => _fetching = false);
+        return;
+      }
+      userId = user.id;
+    }
+
+    // Store user ID for later use
+    _userId = userId;
+
+    nameController.text = widget.initialName ?? '';
 
     try {
-      final profile = await db.getProfile(user.id);
+      final profile = await db.getProfile(userId);
       if (profile != null) {
+        // Use profile name if available, otherwise keep initialName
         nameController.text = profile.name ?? widget.initialName ?? '';
         countryController.text = profile.country ?? '';
         _imagePath = profile.avatarPath;
@@ -55,10 +79,16 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
             dobController.text = DateFormat.yMMMMd().format(_selectedDate!);
           }
         }
-      } else if (widget.initialName != null) {
-        nameController.text = widget.initialName!;
       }
     } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to load profile: $e")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _fetching = false);
+    }
   }
 
   Future<void> _pickAndUploadAvatar() async {
@@ -67,13 +97,22 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
         await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
     if (image == null) return;
 
+    String? userId = _userId ?? db.currentUser?.id;
+    if (userId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Please login to upload image")));
+      }
+      return;
+    }
+
     setState(() => _uploading = true);
     try {
       final bytes = await image.readAsBytes();
       final extension = image.path.split('.').last;
 
       final newPath = await db.uploadAvatar(
-        db.currentUser!.id,
+        userId,
         bytes,
         fileExtension: extension,
       );
@@ -83,13 +122,17 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
         _imageUrl = db.getStorageUrl(newPath, 'profiles');
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Image uploaded successfully!")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Image uploaded successfully!", style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Upload failed: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Upload failed: $e")));
+      }
     } finally {
-      setState(() => _uploading = false);
+      if (mounted) setState(() => _uploading = false);
     }
   }
 
@@ -100,10 +143,20 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
       return;
     }
 
+    // Use stored user ID, or get it from currentUser as fallback
+    String? userId = _userId ?? db.currentUser?.id;
+    if (userId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Please login to save profile")));
+      }
+      return;
+    }
+
     setState(() => _loading = true);
     try {
       await db.updateProfile(
-        userId: db.currentUser!.id,
+        userId: userId,
         name: nameController.text.trim(),
         country: countryController.text.trim(),
         dob: _selectedDate?.toIso8601String(),
@@ -119,8 +172,10 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
         Navigator.pop(context);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Save failed: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Save failed: $e")));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }

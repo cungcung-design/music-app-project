@@ -15,7 +15,8 @@ class ManageArtistsPage extends StatefulWidget {
 
 class _ManageArtistsPageState extends State<ManageArtistsPage> {
   final DatabaseService db = DatabaseService();
-  late Future<List<Artist>> _artistsFuture;
+  List<Artist> artists = [];
+  bool loading = true;
 
   @override
   void initState() {
@@ -23,8 +24,15 @@ class _ManageArtistsPageState extends State<ManageArtistsPage> {
     _loadArtists();
   }
 
-  void _loadArtists() {
-    _artistsFuture = db.getArtists();
+  Future<void> _loadArtists() async {
+    setState(() => loading = true);
+    try {
+      artists = await db.getArtists();
+    } catch (e) {
+      showToast(context, 'Failed to load artists: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
   }
 
   void _showAddArtistDialog() async {
@@ -88,7 +96,13 @@ class _ManageArtistsPageState extends State<ManageArtistsPage> {
   }
 
   @override
+
   Widget build(BuildContext context) {
+    if (loading)
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.green),
+      );
+
     return Scaffold(
       backgroundColor: Colors.black,
       floatingActionButton: FloatingActionButton(
@@ -96,57 +110,52 @@ class _ManageArtistsPageState extends State<ManageArtistsPage> {
         backgroundColor: Colors.green,
         child: const Icon(Icons.add),
       ),
-
-      body: FutureBuilder<List<Artist>>(
-        future: _artistsFuture,
-        builder: (context, snapshot) {
-          if (!snapshot.hasData)
-            return const Center(
-              child: CircularProgressIndicator(color: Colors.green),
-            );
-
-          final artists = snapshot.data!
-            ..sort((a, b) => a.name.compareTo(b.name));
-          return ListView.builder(
-            itemCount: artists.length,
-            itemBuilder: (context, index) {
-              final artist = artists[index];
-              return Card(
-                color: Colors.grey[900],
-                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                child: ExpansionTile(
-                  leading: CircleAvatar(
-                    backgroundImage: artist.artistProfileUrl != null
-                        ? NetworkImage(artist.artistProfileUrl!)
-                        : null,
-                    child: artist.artistProfileUrl == null
-                        ? const Icon(Icons.person)
-                        : null,
-                  ),
-                  title: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          artist.name,
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () => _showEditArtistDialog(artist),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _showDeleteArtistDialog(artist),
-                      ),
-                    ],
-                  ),
-                  children: [_buildAlbumList(artist.id)],
-                ),
-              );
-            },
-          );
+      body: ReorderableListView(
+        onReorder: (oldIndex, newIndex) {
+          setState(() {
+            if (newIndex > oldIndex) {
+              newIndex -= 1;
+            }
+            final artist = artists.removeAt(oldIndex);
+            artists.insert(newIndex, artist);
+          });
         },
+        children: artists.map((artist) {
+          return Card(
+            key: ValueKey(artist.id),
+            color: Colors.grey[900],
+            margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            child: ExpansionTile(
+              leading: CircleAvatar(
+                backgroundImage: artist.artistProfileUrl != null
+                    ? NetworkImage(artist.artistProfileUrl!)
+                    : null,
+                child: artist.artistProfileUrl == null
+                    ? const Icon(Icons.person)
+                    : null,
+              ),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      artist.name,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.blue),
+                    onPressed: () => _showEditArtistDialog(artist),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _showDeleteArtistDialog(artist),
+                  ),
+                ],
+              ),
+              children: [_buildAlbumList(artist.id)],
+            ),
+          );
+        }).toList(),
       ),
     );
   }

@@ -63,32 +63,81 @@ class DatabaseService {
   User? get currentUser => supabase.auth.currentUser;
   bool get isLoggedIn => currentUser != null;
 
-  Future<void> signUp({
+  Future<String> signUp({
     required String email,
     required String password,
     required String name,
     String role = 'user',
   }) async {
-    // Check if user already exists
-    final existingProfile = await getProfileByEmail(email);
-    if (existingProfile != null) {
-      throw Exception('An account with this email already exists');
-    }
+    // Check if user already exists in auth system first
+    try {
+      // Try to sign up - Supabase will reject if email exists
+      final res = await supabase.auth.signUp(email: email, password: password);
 
-    final res = await supabase.auth.signUp(email: email, password: password);
-    if (res.user != null) {
-      await createProfileIfNotExists(res.user!.id, email, name, role: role);
-    } else {
-      throw Exception('Signup failed');
+      if (res.user == null) {
+        throw Exception('Signup failed - user not created');
+      }
+
+      final userId = res.user!.id;
+
+      // Create profile after successful signup
+      // Use try-catch to handle case where profile might already exist
+      try {
+        await createProfileIfNotExists(userId, email, name, role: role);
+      } catch (e) {
+        // If profile creation fails, user is still created in auth
+        // Log error but don't fail the entire signup
+        print('Profile creation note: $e');
+      }
+
+      return userId;
+    } on AuthException catch (e) {
+      if (e.message.contains('already registered') ||
+          e.message.contains('already exists')) {
+        throw Exception('An account with this email already exists');
+      }
+      rethrow;
     }
   }
 
   Future<void> login({required String email, required String password}) async {
-    final res = await supabase.auth.signInWithPassword(
-      email: email,
-      password: password,
-    );
-    if (res.user == null) throw Exception('Login failed');
+    // Validate inputs
+    if (email.isEmpty || password.isEmpty) {
+      throw Exception('Email and password are required');
+    }
+
+    final trimmedEmail = email.trim();
+    print('Attempting login for email: $trimmedEmail');
+
+    try {
+      final res = await supabase.auth.signInWithPassword(
+        email: trimmedEmail,
+        password: password,
+      );
+
+      print(
+          'Login response received. User: ${res.user?.id}, Session: ${res.session != null}');
+
+      if (res.user == null) {
+        throw Exception('Login failed - user not found');
+      }
+
+      // Verify session was created
+      if (res.session == null) {
+        throw Exception('Login failed - session not created');
+      }
+
+      print('Login successful for user: ${res.user!.id}');
+    } catch (e) {
+      print('Login error: $e');
+      // Re-throw other errors with context
+      if (e.toString().contains('400') ||
+          e.toString().contains('Bad Request')) {
+        throw Exception(
+            'Invalid request. Please check your email and password format.');
+      }
+      rethrow;
+    }
   }
 
   Future<void> logout() async => supabase.auth.signOut();
@@ -153,13 +202,50 @@ class DatabaseService {
     String? country,
     String? avatarPath,
   }) async {
-    await supabase.from('profiles').upsert({
-      'id': userId,
+    // Build update data map
+    final Map<String, dynamic> updateData = {
       'name': name,
-      if (dob != null) 'dob': dob,
-      if (country != null) 'country': country,
-      if (avatarPath != null) 'avatar_url': avatarPath,
-    });
+    };
+
+    if (dob != null) {
+      updateData['dob'] = dob;
+    }
+    if (country != null) {
+      updateData['country'] = country;
+    }
+    if (avatarPath != null) {
+      updateData['avatar_url'] = avatarPath;
+    }
+
+    // Try UPDATE first - this avoids SELECT query that might cause recursion
+    try {
+      final result = await supabase
+          .from('profiles')
+          .update(updateData)
+          .eq('id', userId)
+          .select()
+          .maybeSingle();
+
+      // If no rows were updated, the profile doesn't exist - insert it
+      if (result == null) {
+        updateData['id'] = userId;
+        updateData['email'] = supabase.auth.currentUser?.email ?? '';
+        await supabase.from('profiles').insert(updateData);
+      }
+    } catch (e) {
+      // If UPDATE fails due to no matching row, try INSERT
+      final errorString = e.toString();
+      if (errorString.contains('No rows found') ||
+          errorString.contains('no rows') ||
+          errorString.contains('PGRST116') ||
+          errorString.contains('0 rows')) {
+        updateData['id'] = userId;
+        updateData['email'] = supabase.auth.currentUser?.email ?? '';
+        await supabase.from('profiles').insert(updateData);
+      } else {
+        rethrow;
+      }
+    }
   }
 
   // -------------------------------
@@ -214,10 +300,8 @@ class DatabaseService {
   Future<void> createProfileIfNotExists(
       String userId, String email, String name,
       {String role = 'user'}) async {
-    final existing =
-        await supabase.from('profiles').select().eq('id', userId).maybeSingle();
-
-    if (existing == null) {
+    try {
+      // Try to insert directly - if it fails because profile exists, that's okay
       await supabase.from('profiles').insert({
         'id': userId,
         'email': email,
@@ -225,6 +309,16 @@ class DatabaseService {
         'role': role,
         'created_at': DateTime.now().toIso8601String(),
       });
+    } catch (e) {
+      // If profile already exists (duplicate key error), that's fine
+      // Only throw if it's a different error
+      final errorString = e.toString();
+      if (!errorString.contains('duplicate') &&
+          !errorString.contains('unique') &&
+          !errorString.contains('already exists')) {
+        rethrow;
+      }
+      // Profile already exists, which is what we want
     }
   }
 
@@ -617,7 +711,7 @@ class DatabaseService {
   }
 
   Future<List<Song>> getSongsWithDetails() async {
-    final res = await supabase.from('songs').select().order('id');
+    final res = await supabase.from('songs').select().order('created_at');
     final data = List<Map<String, dynamic>>.from(res);
     final albumMap = await getAlbumCoverMap();
     final artistMap = Map<String, String>.fromEntries(
@@ -731,6 +825,7 @@ class DatabaseService {
       'artist_id': artistId,
       'album_id': albumId,
       'audio_url': audioUrl,
+      'created_at': DateTime.now().toIso8601String(),
     });
   }
 
@@ -840,6 +935,7 @@ class DatabaseService {
         'song_id': songId,
         'created_at': DateTime.now().toIso8601String(),
       });
+      notifyFavoritesChanged();
     }
   }
 
@@ -851,6 +947,7 @@ class DatabaseService {
         .delete()
         .eq('user_id', user.id)
         .eq('song_id', songId);
+    notifyFavoritesChanged();
   }
 
   Future<bool> isFavorite(String songId) async {
@@ -922,6 +1019,57 @@ class DatabaseService {
         await supabase.from('user_favorites').select().eq('user_id', user.id);
 
     return List<Map<String, dynamic>>.from(res);
+  }
+
+  Future<int> getTotalFavoriteSongsCount() async {
+    final res = await supabase.from('user_favorites').select('id');
+    return res.length;
+  }
+
+  Future<List<Song>> getUserFavorites(String userId) async {
+    final res = await supabase.from('user_favorites').select('''
+        songs (
+          id,
+          name,
+          audio_url,
+          album_id,
+          artist_id,
+          artists (name),
+          albums (album_url)
+        )
+      ''').eq('user_id', userId);
+
+    final data = List<Map<String, dynamic>>.from(res);
+
+    return data.where((item) => item['songs'] != null).map((item) {
+      final e = item['songs'] as Map<String, dynamic>;
+
+      final audioUrl = resolveUrl(
+        supabase: supabase,
+        bucket: 'song_audio',
+        value: e['audio_url'],
+      );
+
+      final artistName = e['artists']?['name'];
+
+      final albumImage = e['albums']?['album_url'] != null
+          ? resolveUrl(
+              supabase: supabase,
+              bucket: 'album_covers',
+              value: e['albums']['album_url'],
+            )
+          : null;
+
+      return Song(
+        id: e['id'] as String,
+        name: e['name'] ?? '',
+        artistId: e['artist_id'] as String,
+        albumId: e['album_id'] as String,
+        audioUrl: audioUrl,
+        albumImage: albumImage,
+        artistName: artistName,
+      );
+    }).toList();
   }
 
   // -------------------- SEARCH --------------------

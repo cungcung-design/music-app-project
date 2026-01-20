@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../models/profile.dart';
+import '../../models/song.dart';
 import '../../services/database_service.dart';
 import '../../utils/toast.dart';
 
@@ -76,18 +77,15 @@ class _UserDetailPageState extends State<UserDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.grey[900],
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back,
-              color: Color.fromARGB(255, 253, 253, 253)),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Edit User',
-          style: TextStyle(color: Color.fromARGB(255, 237, 236, 236)),
-        ),
-        backgroundColor: const Color.fromARGB(255, 18, 18, 18),
+        title: const Text('Edit User', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.black,
+        elevation: 0,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -95,58 +93,116 @@ class _UserDetailPageState extends State<UserDetailPage> {
           key: _formKey,
           child: ListView(
             children: [
-              // Avatar picker
-              GestureDetector(
-                onTap: _pickImage,
-                child: CircleAvatar(
-                  radius: 50,
-                  backgroundColor: Colors.green,
-                  backgroundImage: _selectedImage != null
-                      ? FileImage(_selectedImage!)
-                      : (widget.user.avatarUrl != null
-                          ? NetworkImage(widget.user.avatarUrl!)
-                              as ImageProvider
-                          : null),
-                  child: _selectedImage == null && widget.user.avatarUrl == null
-                      ? const Icon(Icons.camera_alt,
-                          color: Colors.black, size: 50)
-                      : null,
+              // Avatar picker with modern overlay
+              Center(
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 55,
+                      backgroundColor: Colors.green[400],
+                      backgroundImage: _selectedImage != null
+                          ? FileImage(_selectedImage!)
+                          : (widget.user.avatarUrl != null
+                              ? NetworkImage(widget.user.avatarUrl!)
+                                  as ImageProvider
+                              : null),
+                      child: _selectedImage == null && widget.user.avatarUrl == null
+                          ? const Icon(Icons.person, size: 55, color: Colors.black54)
+                          : null,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: GestureDetector(
+                        onTap: _pickImage,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          padding: const EdgeInsets.all(8),
+                          child: const Icon(Icons.edit, size: 20, color: Colors.white),
+                        ),
+                      ),
+                    )
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-
-              _buildField(
-                  controller: nameController,
-                  label: 'Name',
-                  icon: Icons.person),
-              const SizedBox(height: 12),
-              _buildField(
-                  controller: emailController,
-                  label: 'Email',
-                  icon: Icons.email,
-                  enabled: false),
-              const SizedBox(height: 12),
-              _buildField(
-                  controller: countryController,
-                  label: 'Country',
-                  icon: Icons.public),
-              const SizedBox(height: 12),
-              _buildField(
-                  controller: dobController,
-                  label: 'Date of Birth',
-                  icon: Icons.cake),
               const SizedBox(height: 24),
 
+              _modernField(controller: nameController, label: 'Name', icon: Icons.person),
+              const SizedBox(height: 16),
+              _modernField(controller: emailController, label: 'Email', icon: Icons.email, enabled: false),
+              const SizedBox(height: 16),
+        
+              _modernField(controller: dobController, label: 'Date of Birth', icon: Icons.cake),
+                const SizedBox(height: 16),
+                    _modernField(controller: countryController, label: 'Country', icon: Icons.public),
+              const SizedBox(height: 24),
+               
               ElevatedButton(
                 onPressed: _isLoading ? null : _updateUser,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.black)
-                    : const Text('Save Changes'),
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Save Changes', style: TextStyle(fontSize: 16)),
+              ),
+              const SizedBox(height: 32),
+
+              const Text('Favorite Songs', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              
+              FutureBuilder<List<Song>>(
+                future: db.getUserFavorites(widget.user.id),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(color: Colors.green),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(snapshot.error.toString(), style: const TextStyle(color: Colors.red)),
+                    );
+                  }
+
+                  final favorites = snapshot.data ?? [];
+
+                  if (favorites.isEmpty) {
+                    return const Center(
+                      child: Text('No favorite songs', style: TextStyle(color: Colors.grey)),
+                    );
+                  }
+
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: favorites.length,
+                    itemBuilder: (context, index) {
+                      final song = favorites[index];
+                      return Card(
+                        color: Colors.grey[850],
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: ListTile(
+                          leading: Icon(Icons.music_note, color: Colors.green),
+                          title: Text(song.name, style: const TextStyle(color: Colors.white)),
+                          subtitle: Text(song.artistName ?? 'Unknown Artist', style: const TextStyle(color: Colors.grey)),
+                          trailing: Icon(Icons.play_arrow, color: Colors.green),
+                          onTap: () {
+                            // Add action for playing song if needed
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ],
           ),
@@ -155,7 +211,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
     );
   }
 
-  Widget _buildField({
+  Widget _modernField({
     required TextEditingController controller,
     required String label,
     required IconData icon,
@@ -170,13 +226,15 @@ class _UserDetailPageState extends State<UserDetailPage> {
         labelText: label,
         labelStyle: const TextStyle(color: Colors.grey),
         prefixIcon: Icon(icon, color: Colors.green),
-        enabledBorder: OutlineInputBorder(
-          borderSide: const BorderSide(color: Colors.grey),
-          borderRadius: BorderRadius.circular(8),
-        ),
+        filled: true,
+        fillColor: Colors.grey[850],
         focusedBorder: OutlineInputBorder(
-          borderSide: const BorderSide(color: Colors.green),
-          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.green, width: 2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderSide: const BorderSide(color: Colors.grey, width: 1),
+          borderRadius: BorderRadius.circular(12),
         ),
       ),
     );

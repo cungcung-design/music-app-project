@@ -16,7 +16,6 @@ class _DashboardPageState extends State<DashboardPage> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-     
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: FutureBuilder<List<dynamic>>(
@@ -25,6 +24,7 @@ class _DashboardPageState extends State<DashboardPage> {
             db.getArtists(),
             db.getAlbums(),
             db.getAllUsers(),
+            db.getTotalFavoriteSongsCount(),
           ]),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -53,6 +53,7 @@ class _DashboardPageState extends State<DashboardPage> {
             final artists = snapshot.data![1] as List;
             final albums = snapshot.data![2] as List;
             final users = snapshot.data![3] as List;
+            final favoriteCount = snapshot.data![4] as int;
 
             return Column(
               children: [
@@ -76,7 +77,11 @@ class _DashboardPageState extends State<DashboardPage> {
                   label: 'Total Users',
                   value: users.length,
                 ),
-                
+                _dashboardCard(
+                  icon: Icons.favorite,
+                  label: 'Total Favorite Songs',
+                  value: favoriteCount,
+                ),
               ],
             );
           },

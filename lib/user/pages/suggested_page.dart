@@ -19,6 +19,7 @@ class SuggestedPage extends StatefulWidget {
 
 class _SuggestedPageState extends State<SuggestedPage> {
   late Future<SuggestedData> _dataFuture;
+  final AudioPlayerService _audioService = AudioPlayerService();
 
   @override
   void initState() {
@@ -96,9 +97,14 @@ class _SuggestedPageState extends State<SuggestedPage> {
                       onSongTap: _playSong,
                     ),
                     const SizedBox(height: 32),
-                    PopularSection(
-                      songs: data.popularSongs,
-                      onSongTap: _playSong,
+                    ListenableBuilder(
+                      listenable: _audioService,
+                      builder: (context, _) => PopularSection(
+                        songs: data.popularSongs,
+                        onSongTap: _playSong,
+                        currentSongId: _audioService.currentSong?.id,
+                        isPlaying: _audioService.isPlaying,
+                      ),
                     ),
                     const SizedBox(height: 32),
                     ArtistSection(

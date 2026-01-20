@@ -93,6 +93,20 @@ class _FavoritesPageState extends State<FavoritesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        title: const Text(
+          'Favorites',
+          style: TextStyle(color: Colors.white),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _onPullRefresh,
+          ),
+        ],
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.green))
           : (_localSongs == null || _localSongs!.isEmpty)
@@ -123,14 +137,14 @@ class _FavoritesPageState extends State<FavoritesPage> {
       color: Colors.green,
       backgroundColor: Colors.black,
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(vertical:38),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         itemCount: _localSongs!.length,
         separatorBuilder: (_, __) => const SizedBox(height: 2),
         itemBuilder: (_, i) {
           final song = _localSongs![i];
           return ListTile(
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical:2),
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
             leading: ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: song.albumImage != null

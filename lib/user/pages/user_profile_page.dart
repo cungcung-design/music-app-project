@@ -53,7 +53,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
       ),
       body: Column(
         children: [
-          // 1. Profile Header - Fetches real data from Database
           FutureBuilder<Profile?>(
             future: db.getProfile(db.currentUser?.id ?? ''),
             builder: (context, snapshot) {

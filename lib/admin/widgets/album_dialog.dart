@@ -20,8 +20,6 @@ class AlbumDialog extends StatefulWidget {
 class _AlbumDialogState extends State<AlbumDialog> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
-  final TextEditingController albumProfileUrlController =
-      TextEditingController();
 
   List<Artist> artists = [];
   bool isLoading = true;
@@ -30,6 +28,7 @@ class _AlbumDialogState extends State<AlbumDialog> {
   Uint8List? selectedCoverBytes;
   String? selectedFileName;
   bool removeCurrentCover = false;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -38,7 +37,6 @@ class _AlbumDialogState extends State<AlbumDialog> {
     if (widget.album != null) {
       nameController.text = widget.album!.name;
       selectedArtistId = widget.album!.artistId;
-      albumProfileUrlController.text = widget.album!.albumProfileUrl ?? '';
     }
   }
 
@@ -50,10 +48,8 @@ class _AlbumDialogState extends State<AlbumDialog> {
         isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
-      // Handle error, maybe show a snackbar
+      setState(() => isLoading = false);
+      showToast(context, "Failed to load artists: $e", isError: true);
     }
   }
 
@@ -61,6 +57,7 @@ class _AlbumDialogState extends State<AlbumDialog> {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
       allowMultiple: false,
+      withData: kIsWeb, // Use bytes for web
     );
 
     if (result != null) {
@@ -68,11 +65,9 @@ class _AlbumDialogState extends State<AlbumDialog> {
       setState(() {
         selectedFileName = file.name;
         if (kIsWeb) {
-          // Web: Use bytes
           selectedCoverBytes = file.bytes;
           selectedCoverFile = null;
         } else {
-          // Mobile: Use file path
           selectedCoverFile = File(file.path!);
           selectedCoverBytes = null;
         }
@@ -94,110 +89,119 @@ class _AlbumDialogState extends State<AlbumDialog> {
 
     return AlertDialog(
       backgroundColor: Colors.grey[900],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Text(
         widget.album == null ? "Add Album" : "Edit Album",
-        style: const TextStyle(color: Colors.white),
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
       ),
       content: Form(
         key: _formKey,
         child: SizedBox(
-          width: 300,
+          width: 350,
           child: SingleChildScrollView(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Album Name
                 TextFormField(
                   controller: nameController,
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: 'Album Name',
-                    hintStyle: TextStyle(color: Colors.grey),
+                    hintStyle: const TextStyle(color: Colors.grey),
+                    filled: true,
+                    fillColor: Colors.white10,
+                  
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                   validator: (val) => val!.isEmpty ? "Enter album name" : null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+
+                // Artist Dropdown
                 DropdownButtonFormField<String>(
                   value: selectedArtistId,
-                  decoration: const InputDecoration(
-                    hintText: 'Select Artist',
-                    hintStyle: TextStyle(color: Colors.grey),
-                  ),
                   dropdownColor: Colors.grey[800],
                   style: const TextStyle(color: Colors.white),
-                  items: artists.map((artist) {
-                    return DropdownMenuItem<String>(
-                      value: artist.id,
-                      child: Text(
-                        artist.name,
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedArtistId = value;
-                    });
-                  },
+                  decoration: InputDecoration(
+                    hintText: 'Select Artist',
+                    hintStyle: const TextStyle(color: Colors.grey),
+                    filled: true,
+                    fillColor: Colors.white10,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  items: artists
+                      .map((artist) => DropdownMenuItem(
+                            value: artist.id,
+                            child: Text(artist.name, style: const TextStyle(color: Colors.white)),
+                          ))
+                      .toList(),
+                  onChanged: (value) => setState(() => selectedArtistId = value),
                   validator: (val) => val == null ? "Select an artist" : null,
                 ),
-                const SizedBox(height: 12),
-                // Display current cover image when editing
+                const SizedBox(height: 16),
+
+                // Current cover preview
                 if (widget.album != null &&
                     widget.album!.albumProfileUrl != null &&
                     !removeCurrentCover)
                   Column(
                     children: [
-                      const Text(
-                        'Current Cover:',
-                        style: TextStyle(color: Colors.white, fontSize: 14),
-                      ),
+                      const Text('Current Cover:', style: TextStyle(color: Colors.white)),
                       const SizedBox(height: 8),
-                      Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Image.network(
-                          widget.album!.albumProfileUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(
-                                Icons.broken_image,
-                                color: Colors.grey,
-                              ),
+                      Center(
+                        child: Container(
+                          height: 120,
+                          width: 120,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              widget.album!.albumProfileUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.broken_image, color: Colors.red),
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 8),
                       TextButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            removeCurrentCover = true;
-                            selectedCoverFile = null;
-                            selectedCoverBytes = null;
-                            selectedFileName = null;
-                          });
-                        },
+                        onPressed: () => setState(() {
+                          removeCurrentCover = true;
+                          selectedCoverBytes = null;
+                          selectedCoverFile = null;
+                          selectedFileName = null;
+                        }),
                         icon: const Icon(Icons.delete, color: Colors.red),
-                        label: const Text(
-                          'Remove Cover',
-                          style: TextStyle(color: Colors.red),
-                        ),
+                        label: const Text('Remove Cover', style: TextStyle(color: Colors.red)),
                       ),
                       const SizedBox(height: 12),
                     ],
                   ),
-                ElevatedButton.icon(
-                  onPressed: _pickCover,
+
+                // Pick cover button
+                FilledButton.icon(
                   icon: const Icon(Icons.image),
-                  label: Text(
-                    selectedFileName != null
-                        ? "Selected: $selectedFileName"
-                        : (widget.album != null &&
+                  label: Text(selectedFileName != null
+                      ? "Selected: $selectedFileName"
+                      : (widget.album != null &&
                               widget.album!.albumProfileUrl != null &&
                               !removeCurrentCover)
-                        ? "Change Album Cover"
-                        : "Pick Album Cover (Optional)",
+                          ? "Change Album Cover"
+                          : "Pick Album Cover (Optional)"),
+                  onPressed: _pickCover,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                   ),
                 ),
                 if (selectedFileName != null)
@@ -218,51 +222,57 @@ class _AlbumDialogState extends State<AlbumDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel', style: TextStyle(color: Colors.white)),
         ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-          onPressed: () async {
-            if (_formKey.currentState!.validate()) {
-              try {
-                if (widget.album == null) {
-                  await widget.db.addAlbum(
-                    name: nameController.text,
-                    artistId: selectedArtistId!,
-                    coverFile: selectedCoverFile,
-                    coverBytes: selectedCoverBytes,
-                  );
-                  showToast(
-                    context,
-                    'Album added successfully',
-                    isError: false,
-                  );
-                } else {
-                  await widget.db.updateAlbum(
-                    albumId: widget.album!.id,
-                    name: nameController.text,
-                    artistId: selectedArtistId!,
-                    newCoverFile: selectedCoverFile,
-                    newCoverBytes: selectedCoverBytes,
-                    removeCurrentCover: removeCurrentCover,
-                  );
-                  showToast(
-                    context,
-                    'Album updated successfully',
-                    isError: false,
-                  );
-                }
-                Navigator.pop(context, true);
-              } catch (e) {
-                showToast(
-                  context,
-                  'Failed to ${widget.album == null ? "add" : "update"} album: $e',
-                  isError: true,
-                );
-              }
-            }
-          },
-          child: Text(widget.album == null ? "Add" : "Update"),
+        FilledButton(
+          onPressed: _isSaving ? null : _saveAlbum,
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.green,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          ),
+          child: _isSaving
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : Text(widget.album == null ? "Add" : "Update"),
         ),
       ],
     );
+  }
+
+  Future<void> _saveAlbum() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSaving = true);
+    try {
+      if (widget.album == null) {
+        await widget.db.addAlbum(
+          name: nameController.text,
+          artistId: selectedArtistId!,
+          coverFile: selectedCoverFile,
+          coverBytes: selectedCoverBytes,
+        );
+        showToast(context, 'Album added successfully', isError: false);
+      } else {
+        await widget.db.updateAlbum(
+          albumId: widget.album!.id,
+          name: nameController.text,
+          artistId: selectedArtistId!,
+          newCoverFile: selectedCoverFile,
+          newCoverBytes: selectedCoverBytes,
+          removeCurrentCover: removeCurrentCover,
+        );
+        showToast(context, 'Album updated successfully', isError: false);
+      }
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      showToast(
+        context,
+        'Failed to ${widget.album == null ? "add" : "update"} album: $e',
+        isError: true,
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 }
