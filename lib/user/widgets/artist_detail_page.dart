@@ -32,7 +32,6 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-
       body: Stack(
         children: [
           Column(
@@ -69,14 +68,15 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                     ),
                   ),
 
-            Positioned(
-  top: 40,
-  left: 12,
-  child: IconButton(
-    icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
-    onPressed: () => Navigator.pop(context),
-  ),
-),
+                  Positioned(
+                    top: 40,
+                    left: 12,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back,
+                          color: Colors.white, size: 28),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
 
                   // Artist name
                   Positioned(
@@ -93,7 +93,6 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                   ),
                 ],
               ),
-
               const Padding(
                 padding: EdgeInsets.all(16),
                 child: Align(
@@ -108,7 +107,6 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                   ),
                 ),
               ),
-
               Expanded(
                 child: FutureBuilder<List<Song>>(
                   future: songsFuture,
@@ -130,13 +128,12 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                         final song = songs[index];
 
                         return ListTile(
-                         onTap: () {
-  final player = AudioPlayerService();
-  player.setPlaylist(songs);
-  player.playSong(song);
-},
-
-
+                          onTap: () async {
+                            final player = AudioPlayerService();
+                            player.setPlaylist(songs);
+                            player.playSong(song);
+                            await widget.db.addToPlayHistory(song.id);
+                          },
                           leading: ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: Image.network(
@@ -152,7 +149,6 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                               ),
                             ),
                           ),
-
                           title: Text(
                             song.name,
                             style: const TextStyle(
@@ -162,7 +158,6 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-
                           subtitle: Text(
                             widget.artist.name,
                             style: const TextStyle(
@@ -170,7 +165,6 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
                               fontSize: 12,
                             ),
                           ),
-
                           trailing: const Icon(
                             Icons.more_vert,
                             color: Colors.grey,
@@ -184,7 +178,6 @@ class _ArtistDetailPageState extends State<ArtistDetailPage> {
               ),
             ],
           ),
-
           const Align(
             alignment: Alignment.bottomCenter,
             child: MiniPlayer(),

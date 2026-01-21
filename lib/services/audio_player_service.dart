@@ -53,6 +53,7 @@ class AudioPlayerService extends ChangeNotifier {
       await _player.stop();
 
       currentSong = song;
+      _currentIndex = _playlist.indexOf(song);
       notifyListeners();
 
       await _player.play(
