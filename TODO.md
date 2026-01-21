@@ -1,6 +1,3 @@
-- [ ] Remove avatar section from the UI
-- [ ] Remove date picker field
-- [ ] Remove country field
-- [ ] Modify \_loadProfile to only fetch and set the name
-- [ ] Modify \_saveProfile to only save the name
-- [ ] Update the UI to show only the name field
+- [x] Modify `getSongsByAlbum` in `database_service.dart` to populate `artistName` and `albumImage`
+- [x] Modify `getSongsByArtist` in `database_service.dart` to populate `artistName` and `albumImage`
+- [x] Modify `getSongs` in `database_service.dart` to populate `artistName` and `albumImage`

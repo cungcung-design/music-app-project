@@ -393,6 +393,18 @@ class DatabaseService {
     return artists;
   }
 
+  Future<Artist?> getArtistById(String artistId) async {
+    final data = await supabase
+        .from('artists')
+        .select()
+        .eq('id', artistId)
+        .maybeSingle();
+    if (data != null) {
+      return Artist.fromMap(data as Map<String, dynamic>, supabase: supabase);
+    }
+    return null;
+  }
+
   Future<void> addArtist({
     required String name,
     String? bio,
@@ -476,7 +488,7 @@ class DatabaseService {
   // ================= TABLE ALBUMS =================
 
   Future<List<Album>> getAlbums() async {
-    final res = await supabase.from('albums').select();
+    final res = await supabase.from('albums').select('*, songs(id)');
     return List<Map<String, dynamic>>.from(
       res,
     ).map((e) => Album.fromMap(e, supabase: supabase)).toList();
@@ -665,18 +677,32 @@ class DatabaseService {
   Future<List<Song>> getSongs() async {
     final res = await supabase.from('songs').select();
     final data = List<Map<String, dynamic>>.from(res);
-    return data
-        .map(
-          (e) => Song.fromMap(
-            e,
-            storageUrl: resolveUrl(
-              supabase: supabase,
-              bucket: 'song_audio',
-              value: e['audio_url'],
-            ),
-          ),
-        )
-        .toList();
+    final albumMap = await getAlbumCoverMap();
+    final artistMap = Map<String, String>.fromEntries(
+      (await supabase.from('artists').select()).map(
+        (e) => MapEntry(e['id'].toString(), e['name'].toString()),
+      ),
+    );
+    return data.map((e) {
+      final audioUrl = resolveUrl(
+        supabase: supabase,
+        bucket: 'song_audio',
+        value: e['audio_url'],
+      );
+      final albumId = e['album_id']?.toString() ?? '';
+      final albumImage = albumId.isNotEmpty ? albumMap[albumId] : null;
+      final artistId = e['artist_id']?.toString();
+      final artistName = artistId != null ? artistMap[artistId] : null;
+      return Song(
+        id: e['id'].toString(),
+        name: e['name'] ?? '',
+        artistId: artistId ?? '',
+        albumId: albumId,
+        audioUrl: audioUrl,
+        albumImage: albumImage,
+        artistName: artistName,
+      );
+    }).toList();
   }
 
   Future<Map<String, String>> fetchSongAudioMap() async {
@@ -750,35 +776,63 @@ class DatabaseService {
   Future<List<Song>> getSongsByArtist(String artistId) async {
     final res = await supabase.from('songs').select().eq('artist_id', artistId);
     final data = List<Map<String, dynamic>>.from(res);
-    return data
-        .map(
-          (e) => Song.fromMap(
-            e,
-            storageUrl: resolveUrl(
-              supabase: supabase,
-              bucket: 'song_audio',
-              value: e['audio_url'],
-            ),
-          ),
-        )
-        .toList();
+    final albumMap = await getAlbumCoverMap();
+    final artistMap = Map<String, String>.fromEntries(
+      (await supabase.from('artists').select()).map(
+        (e) => MapEntry(e['id'].toString(), e['name'].toString()),
+      ),
+    );
+    return data.map((e) {
+      final audioUrl = resolveUrl(
+        supabase: supabase,
+        bucket: 'song_audio',
+        value: e['audio_url'],
+      );
+      final albumId = e['album_id']?.toString() ?? '';
+      final albumImage = albumId.isNotEmpty ? albumMap[albumId] : null;
+      final artistId = e['artist_id']?.toString();
+      final artistName = artistId != null ? artistMap[artistId] : null;
+      return Song(
+        id: e['id'].toString(),
+        name: e['name'] ?? '',
+        artistId: artistId ?? '',
+        albumId: albumId,
+        audioUrl: audioUrl,
+        albumImage: albumImage,
+        artistName: artistName,
+      );
+    }).toList();
   }
 
   Future<List<Song>> getSongsByAlbum(String albumId) async {
     final res = await supabase.from('songs').select().eq('album_id', albumId);
     final data = List<Map<String, dynamic>>.from(res);
-    return data
-        .map(
-          (e) => Song.fromMap(
-            e,
-            storageUrl: resolveUrl(
-              supabase: supabase,
-              bucket: 'song_audio',
-              value: e['audio_url'],
-            ),
-          ),
-        )
-        .toList();
+    final albumMap = await getAlbumCoverMap();
+    final artistMap = Map<String, String>.fromEntries(
+      (await supabase.from('artists').select()).map(
+        (e) => MapEntry(e['id'].toString(), e['name'].toString()),
+      ),
+    );
+    return data.map((e) {
+      final audioUrl = resolveUrl(
+        supabase: supabase,
+        bucket: 'song_audio',
+        value: e['audio_url'],
+      );
+      final albumId = e['album_id']?.toString() ?? '';
+      final albumImage = albumId.isNotEmpty ? albumMap[albumId] : null;
+      final artistId = e['artist_id']?.toString();
+      final artistName = artistId != null ? artistMap[artistId] : null;
+      return Song(
+        id: e['id'].toString(),
+        name: e['name'] ?? '',
+        artistId: artistId ?? '',
+        albumId: albumId,
+        audioUrl: audioUrl,
+        albumImage: albumImage,
+        artistName: artistName,
+      );
+    }).toList();
   }
 
   Future<String> uploadSongAudio({

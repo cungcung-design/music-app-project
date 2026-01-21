@@ -5,12 +5,14 @@ class Album {
   final String name;
   final String artistId;
   final String? albumProfileUrl;
+  final int songCount;
 
   Album({
     required this.id,
     required this.name,
     required this.artistId,
     this.albumProfileUrl,
+    this.songCount = 0,
   });
 
   static String? resolveUrl({
@@ -42,6 +44,7 @@ class Album {
       name: map['name'] ?? '',
       artistId: map['artist_id'].toString(),
       albumProfileUrl: url,
+      songCount: (map['songs'] as List?)?.length ?? 0,
     );
   }
 
