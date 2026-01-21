@@ -168,11 +168,17 @@ class _ProfileFormPageState extends State<ProfileFormPage> {
 
       if (!mounted) return;
 
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text("Profile saved successfully!",
+            style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.green,
+      ));
+
       if (widget.afterSignup) {
         Navigator.pushReplacement(
-  context,
-  MaterialPageRoute(builder: (_) => const LoginPage()),
-);
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+        );
       } else {
         Navigator.pop(context);
       }
