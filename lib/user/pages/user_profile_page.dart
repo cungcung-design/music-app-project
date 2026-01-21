@@ -16,12 +16,19 @@ class UserProfilePage extends StatefulWidget {
 class _UserProfilePageState extends State<UserProfilePage> {
   late Future<int> _likedSongsCount;
   late Future<int> _recentlyPlayedCount;
+  Future<Profile?>? _profileFuture;
 
   @override
   void initState() {
     super.initState();
     _likedSongsCount = _getLikedSongsCount();
     _recentlyPlayedCount = _getRecentlyPlayedCount();
+    _profileFuture = _fetchProfile();
+  }
+
+  Future<Profile?> _fetchProfile() async {
+    final db = DatabaseService();
+    return await db.getProfile(db.currentUser?.id ?? '');
   }
 
   Future<int> _getLikedSongsCount() async {
@@ -32,8 +39,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
   Future<int> _getRecentlyPlayedCount() async {
     final db = DatabaseService();
-    final recentlyPlayed =
-        await db.getRecentlyPlayedSongs(limit: 20); 
+    final recentlyPlayed = await db.getRecentlyPlayedSongs(limit: 20);
     return recentlyPlayed.length;
   }
 
@@ -54,24 +60,30 @@ class _UserProfilePageState extends State<UserProfilePage> {
       body: Column(
         children: [
           FutureBuilder<Profile?>(
-            future: db.getProfile(db.currentUser?.id ?? ''),
+            future: _profileFuture,
             builder: (context, snapshot) {
               final profile = snapshot.data;
 
               return ListTile(
-                onTap: () {
-                  Navigator.push(
+                onTap: () async {
+                  final updated = await Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (_) => const UserProfileViewDetail()),
                   );
+                  if (updated == true) {
+                    setState(() {
+                      _profileFuture = _fetchProfile();
+                    });
+                  }
                 },
                 leading: CircleAvatar(
                   radius: 25,
                   backgroundColor: Colors.grey[900],
                   backgroundImage: (profile?.avatarUrl != null &&
                           profile!.avatarUrl!.isNotEmpty)
-                      ? NetworkImage(profile.avatarUrl!)
+                      ? NetworkImage(
+                          "${profile.avatarUrl}?v=${DateTime.now().millisecondsSinceEpoch}")
                       : null,
                   child: (profile?.avatarUrl == null)
                       ? const Icon(Icons.person, color: Colors.white)

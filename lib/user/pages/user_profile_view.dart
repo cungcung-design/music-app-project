@@ -16,6 +16,14 @@ class UserProfileViewDetail extends StatefulWidget {
 class _UserProfileViewDetailState extends State<UserProfileViewDetail> {
   final DatabaseService db = DatabaseService();
   bool _isUploading = false;
+  Future<Profile?>? _profileFuture;
+  bool _imageUpdated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _profileFuture = _fetchProfile();
+  }
 
   Future<Profile?> _fetchProfile() async {
     final user = db.currentUser;
@@ -65,7 +73,9 @@ class _UserProfileViewDetailState extends State<UserProfileViewDetail> {
               ),
             ),
           );
-          // Force refresh the profile data
+          // Refresh the profile data instantly
+          _profileFuture = _fetchProfile();
+          _imageUpdated = true;
           setState(() {});
         }
       } catch (e) {
@@ -125,7 +135,7 @@ class _UserProfileViewDetailState extends State<UserProfileViewDetail> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            Navigator.pop(context);
+            Navigator.pop(context, _imageUpdated);
           },
         ),
         title: const Text("My Profile", style: TextStyle(color: Colors.white)),
@@ -144,7 +154,7 @@ class _UserProfileViewDetailState extends State<UserProfileViewDetail> {
         ],
       ),
       body: FutureBuilder<Profile?>(
-        future: _fetchProfile(),
+        future: _profileFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting &&
               !_isUploading) {

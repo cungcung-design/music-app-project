@@ -174,7 +174,7 @@ class RecentlyPlayedSection extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         SizedBox(
-          height: 90, // Reduced height because it's a horizontal capsule
+          height: 90, 
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
@@ -188,7 +188,6 @@ class RecentlyPlayedSection extends StatelessWidget {
                   width: 240, // Wider for the row layout
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    // Semi-transparent background (Glass Effect)
                     color: Colors.white.withOpacity(0.07),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
@@ -198,7 +197,6 @@ class RecentlyPlayedSection extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      // Smaller square image
                       ClipRRect(
                         borderRadius: BorderRadius.circular(10),
                         child: song.albumImage != null
