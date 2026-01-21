@@ -21,6 +21,11 @@ class UserHomePage extends StatefulWidget {
 class _UserHomePageState extends State<UserHomePage> {
   int selectedBottomIndex = 0;
   final DatabaseService db = DatabaseService();
+  int _profileUpdateKey = 0;
+
+  Future<Profile?> _getProfileFuture() {
+    return db.getProfile(db.currentUser?.id ?? '');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +44,8 @@ class _UserHomePageState extends State<UserHomePage> {
                 leading: Padding(
                   padding: const EdgeInsets.only(left: 12),
                   child: FutureBuilder<Profile?>(
-                    future: db.getProfile(db.currentUser?.id ?? ''),
+                    key: ValueKey(_profileUpdateKey),
+                    future: _getProfileFuture(),
                     builder: (context, snapshot) {
                       final profile = snapshot.data;
                       return GestureDetector(
@@ -49,7 +55,11 @@ class _UserHomePageState extends State<UserHomePage> {
                             MaterialPageRoute(
                               builder: (_) => const UserProfileViewDetail(),
                             ),
-                          ).then((_) => setState(() {}));
+                          ).then((_) {
+                            setState(() {
+                              _profileUpdateKey++;
+                            });
+                          });
                         },
                         child: Center(
                           child: Container(
@@ -65,7 +75,7 @@ class _UserHomePageState extends State<UserHomePage> {
                               child: (profile?.avatarUrl != null &&
                                       profile!.avatarUrl!.isNotEmpty)
                                   ? Image.network(
-                                      profile.avatarUrl!,
+                                      "${profile.avatarUrl}?v=${DateTime.now().millisecondsSinceEpoch}",
                                       fit: BoxFit.cover,
                                       errorBuilder:
                                           (context, error, stackTrace) =>
