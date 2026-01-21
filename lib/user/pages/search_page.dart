@@ -27,7 +27,6 @@ class _SearchPageState extends State<SearchPage> {
 
   void _playSong(Song song) {
     final service = AudioPlayerService();
-    // Set search results as the current playlist
     service.setPlaylist(searchResults);
     service.playSong(song);
 
